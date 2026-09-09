@@ -247,7 +247,7 @@ class BolaoApp {
         } else {
             if (errorDiv) {
                 errorDiv.style.display = "block";
-                errorDiv.textContent = "❌ Senha incorreta! Digite a senha correta (Pats87).";
+                errorDiv.textContent = "❌ Senha incorreta! Tente novamente.";
             }
             if (passInput) {
                 passInput.value = "";
@@ -1360,12 +1360,12 @@ class BolaoApp {
                 <div class="settings-card">
                     <div class="settings-card-header">
                         <span class="settings-card-title">🔐 Senha do Administrador</span>
-                        <span style="font-size: 0.8rem; color: #F59E0B;">Senha atual configurada: <strong>${this.data.settings.adminPassword || "Pats87"}</strong></span>
+                        <span style="font-size: 0.8rem; color: #F59E0B;">Proteção de edição de placares</span>
                     </div>
                     <form id="formChangeAdminPassword">
                         <div class="form-group" style="max-width: 380px;">
                             <label class="form-label">Nova Senha de Administrador</label>
-                            <input type="text" id="inputNewAdminPassword" class="form-input" placeholder="Digite a nova senha" value="${this.data.settings.adminPassword || "Pats87"}" required>
+                            <input type="password" id="inputNewAdminPassword" class="form-input" placeholder="Digite a nova senha" required>
                         </div>
                         <div style="margin-top: 1rem; display: flex; justify-content: flex-start;">
                             <button type="submit" class="btn btn-secondary">
