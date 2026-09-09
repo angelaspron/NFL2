@@ -2785,8 +2785,8 @@ const INITIAL_BOLAO_DATA = {
 // =============================================================================
 // CONEXÃO COM A NUVEM SUPABASE (SINCRONIZAÇÃO EM TEMPO REAL)
 // =============================================================================
-const SUPABASE_URL = "https://ynxmtzgucuxtnkhtdryu.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlueG10emd1Y3V4dG5raHRkcnl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc2ODMzNjksImV4cCI6MjEwMzI1OTM2OX0.WZB7xvvxgSisYK_fgoUO3i6e_JweQf-TRRLFaH9qjow";
+const SUPABASE_URL = "https://lvdzifguxgxtufmmluco.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2ZHppZmd1eGd4dHVmbW1sdWNvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5ODY4OTgsImV4cCI6MjEwNDU2Mjg5OH0.MeoIJHK040eKzNTIuOMEQNjUXB-sLoxd02treJ2UlUI";
 
 let supabaseClient = null;
 if (window.supabase) {
