@@ -1267,6 +1267,10 @@ class BolaoApp {
                         </select>
                     </div>
 
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="text" class="form-input input-part-telegram" value="${p.telegramChatId || ''}" placeholder="Telegram Chat ID" style="width: 100%; font-size: 0.82rem;" title="ID numérico do Telegram ou @usuario">
+                    </div>
+
                     <div style="display: flex; gap: 0.4rem; justify-content: flex-end;">
                         <button class="btn btn-primary btn-save-participant" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
                             💾 Salvar
@@ -1300,6 +1304,9 @@ class BolaoApp {
                                 <select id="newFriendFavTeam" class="form-select" style="width: 100%;">
                                     ${teamOptionsHtml("KC")}
                                 </select>
+                            </div>
+                            <div>
+                                <input type="text" id="newFriendTelegram" class="form-input" placeholder="Telegram ID" style="width: 100%; font-size: 0.85rem;">
                             </div>
                             <div>
                                 <button type="submit" class="btn btn-success" style="padding: 0.45rem 1rem; font-size: 0.85rem; width: 100%;">
@@ -1482,6 +1489,7 @@ class BolaoApp {
             const avatarSelect = row.querySelector(".select-part-avatar");
             const teamSelect = row.querySelector(".select-part-fav-team");
             const logoImg = row.querySelector(".img-part-team-logo");
+            const telegramInput = row.querySelector(".input-part-telegram");
             const saveBtn = row.querySelector(".btn-save-participant");
             const deleteBtn = row.querySelector(".btn-delete-participant");
 
@@ -1496,6 +1504,7 @@ class BolaoApp {
                     p.name = nameInput.value.trim() || p.name;
                     p.avatar = avatarSelect.value;
                     p.favTeam = teamSelect.value;
+                    p.telegramChatId = telegramInput ? telegramInput.value.trim() : (p.telegramChatId || "");
                     saveBolaoData(this.data);
                     this.showToast(`Dados de ${p.name} atualizados com sucesso!`, "success");
                     this.renderAll();
@@ -1523,6 +1532,7 @@ class BolaoApp {
             const name = document.getElementById("newFriendName").value.trim();
             const avatar = document.getElementById("newFriendAvatar").value;
             const favTeam = document.getElementById("newFriendFavTeam").value;
+            const telegramChatId = document.getElementById("newFriendTelegram")?.value.trim() || "";
 
             if (!name) return;
 
@@ -1532,6 +1542,7 @@ class BolaoApp {
                 name: name,
                 avatar: avatar,
                 favTeam: favTeam,
+                telegramChatId: telegramChatId,
                 createdAt: new Date().toISOString()
             });
 
