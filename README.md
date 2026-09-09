@@ -13,7 +13,6 @@ Aplicação web moderna, temática e elegante desenvolvida especialmente para o 
 
 ## 🔐 Acesso do Administrador
 
-- **Senha Padrão**: `Pats87`
 - Para entrar como administrador, clique no botão **🔒 Admin** no topo direito ou clique na aba **Placares 🔒**.
 - O sistema solicitará a senha. Após digitá-la corretamente, o modo admin será liberado para lançar os placares reais e alterar configurações sensíveis.
 
