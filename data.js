@@ -2884,15 +2884,18 @@ function parseMatchKickoffDate(match) {
 
 function isMatchLockedByTime(match) {
     if (!match) return false;
-    // Jogo encerrado ou com placar preenchido trava
+
+    // Se a partida foi finalizada ou está em andamento oficialmente
     if (match.status === "finished" || match.status === "in_progress") return true;
-    if (match.score1 !== null && match.score1 !== undefined && match.score1 !== "") return true;
 
-    const kickoffDate = parseMatchKickoffDate(match);
-    if (!kickoffDate) return false;
+    // Se já tiver placar oficial cadastrado (score1 e score2 preenchidos)
+    if (match.score1 !== null && match.score1 !== undefined && match.score1 !== "" &&
+        match.score2 !== null && match.score2 !== undefined && match.score2 !== "") {
+        return true;
+    }
 
-    // Compara o horário atual com o horário de kickoff do jogo
-    return Date.now() >= kickoffDate.getTime();
+    // Caso contrário, a partida está aberta para palpites!
+    return false;
 }
 
 function saveBolaoData(data) {
