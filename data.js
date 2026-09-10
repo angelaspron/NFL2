@@ -2855,9 +2855,8 @@ function parseMatchKickoffDate(match) {
         // Temporada 2026-2027: Setembro-Dezembro 2026, Janeiro 2027
         const year = (month >= 8) ? 2026 : 2027;
 
-        // Criar data no fuso de São Paulo (UTC-3)
-        const dt = new Date(Date.UTC(year, month, day, hour + 3, min));
-        return dt;
+        // Criar data utilizando o fuso/horário local exatamente como consta na tabela
+        return new Date(year, month, day, hour, min, 0);
     } catch (err) {
         console.error("Erro ao converter data do jogo:", err);
         return null;
