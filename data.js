@@ -2841,29 +2841,36 @@ async function fetchUserIp() {
 function parseMatchKickoffDate(match) {
     if (!match || !match.date || !match.time) return null;
     try {
-        // Formato original ex: "Qui, 10/09" ou "Dom, 13/09" ou "10/09/2026"
+        // Formatos aceitos ex: "Qua, 9/09", "Qui, 10/09", "10/09", "10/09/2026"
         const parts = match.date.split(",");
-        const datePart = (parts[1] || parts[0]).trim(); // "10/09" ou "10/09/2026"
-        const dateSegments = datePart.split("/");
-        const day = parseInt(dateSegments[0], 10);
-        const month = parseInt(dateSegments[1], 10) - 1; // 0-indexed
+        const datePart = (parts.length > 1 ? parts[1] : parts[0]).trim();
+        const dateSegments = datePart.split("/").map(s => s.trim());
 
-        const [hourStr, minStr] = match.time.split(":");
-        const hour = parseInt(hourStr, 10);
-        const min = parseInt(minStr, 10);
+        const day = parseInt(dateSegments[0], 10);
+        const month = parseInt(dateSegments[1], 10) - 1;
+
+        const timeParts = match.time.split(":").map(s => s.trim());
+        const hour = parseInt(timeParts[0], 10);
+        const min = parseInt(timeParts[1], 10);
+
+        if (isNaN(day) || isNaN(month) || isNaN(hour) || isNaN(min)) {
+            return null;
+        }
 
         let year;
-        if (dateSegments.length >= 3) {
+        if (dateSegments.length >= 3 && !isNaN(parseInt(dateSegments[2], 10))) {
             year = parseInt(dateSegments[2], 10);
-        } else if (match.year) {
+        } else if (match.year && !isNaN(parseInt(match.year, 10))) {
             year = parseInt(match.year, 10);
         } else {
-            // Tenta obter o ano atual da máquina ou assume 2026
-            const currentYear = new Date().getFullYear();
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            // Se o mês for setembro (8) a dezembro (11), usa o ano atual
             year = (month >= 8) ? currentYear : (currentYear + 1);
         }
 
-        return new Date(year, month, day, hour, min, 0);
+        const d = new Date(year, month, day, hour, min, 0);
+        return isNaN(d.getTime()) ? null : d;
     } catch (err) {
         console.error("Erro ao converter data do jogo:", err);
         return null;
@@ -2872,13 +2879,14 @@ function parseMatchKickoffDate(match) {
 
 function isMatchLockedByTime(match) {
     if (!match) return false;
+    // Jogo encerrado ou com placar preenchido trava
     if (match.status === "finished" || match.status === "in_progress") return true;
     if (match.score1 !== null && match.score1 !== undefined && match.score1 !== "") return true;
 
     const kickoffDate = parseMatchKickoffDate(match);
     if (!kickoffDate) return false;
 
-    // Se o momento atual for igual ou posterior ao kickoff, trava o palpite
+    // Compara o horário atual com o horário de kickoff do jogo
     return Date.now() >= kickoffDate.getTime();
 }
 
