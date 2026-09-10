@@ -2805,11 +2805,16 @@ function loadBolaoData() {
         if (saved) {
             const parsed = JSON.parse(saved);
             if (parsed.matches && parsed.matches.length > 0) {
-                // Garante que configurações tenham adminPassword e auditLogs
+                // Garante que a lista de partidas esteja sempre sincronizada com a tabela oficial (datas, times, horas e status)
+                parsed.matches = INITIAL_BOLAO_DATA.matches;
+
                 if (!parsed.settings) parsed.settings = {};
                 if (!parsed.settings.adminPassword) parsed.settings.adminPassword = "Pats87";
                 if (!parsed.auditLogs) parsed.auditLogs = [];
                 if (!parsed.predictions) parsed.predictions = {};
+                
+                // Atualiza o storage com os dados corrigidos
+                saveBolaoData(parsed);
                 return parsed;
             }
         }
