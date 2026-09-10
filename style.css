@@ -1431,3 +1431,53 @@ h1, h2, h3, h4, .font-display {
     background: rgba(56, 189, 248, 0.2);
     color: #FFFFFF;
 }
+
+/* ==========================================================================
+   Relógio Oficial de Brasília via Internet (Header / Week Nav)
+   ========================================================================== */
+.brasilia-clock-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: var(--radius-full);
+    padding: 0.35rem 0.85rem;
+    font-size: 0.8rem;
+    color: #CBD5E1;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    user-select: none;
+    transition: all var(--transition-fast);
+}
+.brasilia-clock-container strong {
+    color: #38BDF8;
+    font-family: var(--font-display);
+    letter-spacing: 0.5px;
+}
+.clock-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+.clock-status-dot.synced {
+    background: #10B981;
+    box-shadow: 0 0 8px #10B981;
+    animation: pulseGlow 2s infinite ease-in-out;
+}
+.clock-status-dot.syncing {
+    background: #F59E0B;
+    box-shadow: 0 0 6px #F59E0B;
+}
+.clock-status-dot.error {
+    background: #EF4444;
+    box-shadow: 0 0 6px #EF4444;
+}
+
+@keyframes pulseGlow {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.55; transform: scale(1.25); }
+}
+

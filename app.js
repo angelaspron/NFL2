@@ -17,6 +17,14 @@ class BolaoApp {
 
     async init() {
         this.bindEvents();
+
+        // 1. Inicia sincronização do relógio de Brasília via Internet antes de renderizar
+        if (typeof BrasiliaInternetClock !== "undefined") {
+            this.startBrasiliaClockLiveUpdate();
+            await BrasiliaInternetClock.sync();
+            this.updateBrasiliaClockDisplay();
+        }
+
         this.renderAll();
 
         // Tenta buscar os dados atualizados da nuvem no arranque
@@ -33,6 +41,66 @@ class BolaoApp {
         if (this.data.settings.autoSyncEspn) {
             this.startAutoSyncEspn();
         }
+    }
+
+    updateBrasiliaClockDisplay() {
+        const displayEl = document.getElementById("brasiliaClockDisplay");
+        const dotEl = document.getElementById("clockStatusDot");
+        if (!displayEl || typeof BrasiliaInternetClock === "undefined") return;
+
+        const clockData = BrasiliaInternetClock.getNowObject();
+        if (clockData && BrasiliaInternetClock.synced) {
+            displayEl.innerHTML = `🕒 Brasília (Internet): <strong>${clockData.formattedDate} ${clockData.formattedTime}</strong>`;
+            if (dotEl) {
+                dotEl.className = "clock-status-dot synced";
+                dotEl.title = `Sincronizado via ${clockData.source}`;
+            }
+        } else {
+            displayEl.innerHTML = `🕒 Brasília (Internet): <span style="color: #F59E0B;">Sincronizando...</span>`;
+            if (dotEl) {
+                dotEl.className = "clock-status-dot syncing";
+                dotEl.title = "Consultando data e hora oficial de Brasília na internet...";
+            }
+        }
+    }
+
+    startBrasiliaClockLiveUpdate() {
+        if (this.brasiliaClockTimer) clearInterval(this.brasiliaClockTimer);
+        this.updateBrasiliaClockDisplay();
+
+        // Atualiza o relógio a cada 1 segundo com base no tempo da internet
+        this.brasiliaClockTimer = setInterval(() => {
+            this.updateBrasiliaClockDisplay();
+        }, 1000);
+
+        // Re-sincroniza com a internet a cada 60 segundos para precisão absoluta
+        if (this.brasiliaClockSyncInterval) clearInterval(this.brasiliaClockSyncInterval);
+        this.brasiliaClockSyncInterval = setInterval(async () => {
+            if (typeof BrasiliaInternetClock !== "undefined") {
+                await BrasiliaInternetClock.sync();
+                this.updateBrasiliaClockDisplay();
+            }
+        }, 60000);
+
+        // Verifica a cada 15 segundos se algum jogo em exibição acabou de iniciar para travar automaticamente
+        if (this.matchLockCheckInterval) clearInterval(this.matchLockCheckInterval);
+        this.matchLockCheckInterval = setInterval(() => {
+            if (this.currentView === "cards") {
+                const openCards = document.querySelectorAll(".match-bet-card:not(.locked-match)");
+                let needsRefresh = false;
+                openCards.forEach(card => {
+                    const matchId = card.dataset.matchId;
+                    const match = this.data.matches.find(m => m.id === matchId);
+                    if (match && isMatchLockedByTime(match)) {
+                        needsRefresh = true;
+                    }
+                });
+                if (needsRefresh) {
+                    this.renderCardsView();
+                    this.showToast("⏰ Um jogo acabou de iniciar e foi travado para novas apostas.", "info");
+                }
+            }
+        }, 15000);
     }
 
     // =========================================================================

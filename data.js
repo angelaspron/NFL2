@@ -2843,18 +2843,207 @@ async function fetchUserIp() {
     return cachedUserIp;
 }
 
-function parseMatchKickoffDate(match) {
+// =============================================================================
+// RELÓGIO OFICIAL DE BRASÍLIA VIA INTERNET (SEM USAR RELÓGIO DO COMPUTADOR)
+// =============================================================================
+
+const BrasiliaInternetClock = {
+    synced: false,
+    baseTimestamp: null,  // Timestamp em ms correspondente à data/hora de Brasília
+    perfAtSync: 0,        // performance.now() no momento da resposta da internet
+    source: "Pendente",
+    lastSyncISO: null,
+    syncPromise: null,
+
+    // Retorna o timestamp atual em Brasília (em milissegundos)
+    getNowTimestamp() {
+        if (!this.synced || this.baseTimestamp === null) {
+            return null;
+        }
+        const elapsed = (typeof performance !== "undefined" && performance.now)
+            ? (performance.now() - this.perfAtSync)
+            : 0;
+        return this.baseTimestamp + elapsed;
+    },
+
+    // Retorna os dados desmembrados da data/hora atual de Brasília
+    getNowObject() {
+        const ts = this.getNowTimestamp();
+        if (ts === null) return null;
+        const d = new Date(ts);
+        const day = d.getUTCDate();
+        const month = d.getUTCMonth() + 1;
+        const year = d.getUTCFullYear();
+        const hour = d.getUTCHours();
+        const min = d.getUTCMinutes();
+        const sec = d.getUTCSeconds();
+
+        const pad = (n) => String(n).padStart(2, "0");
+        return {
+            year,
+            month,
+            day,
+            hour,
+            minute: min,
+            second: sec,
+            formattedDate: `${pad(day)}/${pad(month)}/${year}`,
+            formattedTime: `${pad(hour)}:${pad(min)}:${pad(sec)}`,
+            source: this.source,
+            synced: this.synced
+        };
+    },
+
+    // Sincroniza com a internet consultando a data e horário oficial de Brasília
+    async sync() {
+        if (this.syncPromise) return this.syncPromise;
+
+        this.syncPromise = (async () => {
+            // Tentativa 1: time.now API (Muito rápida, CORS liberado, fuso America/Sao_Paulo)
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                const res = await fetch("https://time.now/developer/api/timezone/America/Sao_Paulo", {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json && json.datetime) {
+                        const m = json.datetime.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+                        if (m) {
+                            const [_, y, mo, d, h, mi, s] = m.map(Number);
+                            this.baseTimestamp = Date.UTC(y, mo - 1, d, h, mi, s);
+                            this.perfAtSync = performance.now();
+                            this.synced = true;
+                            this.source = "time.now (Internet)";
+                            this.lastSyncISO = new Date().toISOString();
+                            console.log(`[Relógio Brasília] Sincronizado via ${this.source}: ${d}/${mo}/${y} ${h}:${mi}:${s}`);
+                            return true;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn("[Relógio Brasília] Falha na fonte 1 (time.now), tentando fonte 2...", e.message);
+            }
+
+            // Tentativa 2: timeapi.io (CORS liberado, zona America/Sao_Paulo)
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                const res = await fetch("https://timeapi.io/api/time/current/zone?timeZone=America/Sao_Paulo", {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json && json.year && json.month && json.day) {
+                        const y = parseInt(json.year, 10);
+                        const mo = parseInt(json.month, 10);
+                        const d = parseInt(json.day, 10);
+                        const h = parseInt(json.hour, 10);
+                        const mi = parseInt(json.minute, 10);
+                        const s = parseInt(json.seconds, 10) || 0;
+                        this.baseTimestamp = Date.UTC(y, mo - 1, d, h, mi, s);
+                        this.perfAtSync = performance.now();
+                        this.synced = true;
+                        this.source = "timeapi.io (Internet)";
+                        this.lastSyncISO = new Date().toISOString();
+                        console.log(`[Relógio Brasília] Sincronizado via ${this.source}: ${d}/${mo}/${y} ${h}:${mi}:${s}`);
+                        return true;
+                    }
+                }
+            } catch (e) {
+                console.warn("[Relógio Brasília] Falha na fonte 2 (timeapi.io), tentando fonte 3...", e.message);
+            }
+
+            // Tentativa 3: worldtimeapi.org
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                const res = await fetch("https://worldtimeapi.org/api/timezone/America/Sao_Paulo", {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json && json.datetime) {
+                        const m = json.datetime.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+                        if (m) {
+                            const [_, y, mo, d, h, mi, s] = m.map(Number);
+                            this.baseTimestamp = Date.UTC(y, mo - 1, d, h, mi, s);
+                            this.perfAtSync = performance.now();
+                            this.synced = true;
+                            this.source = "worldtimeapi.org (Internet)";
+                            this.lastSyncISO = new Date().toISOString();
+                            console.log(`[Relógio Brasília] Sincronizado via ${this.source}: ${d}/${mo}/${y} ${h}:${mi}:${s}`);
+                            return true;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn("[Relógio Brasília] Falha na fonte 3 (worldtimeapi), tentando fonte 4...", e.message);
+            }
+
+            // Tentativa 4: Cabeçalho HTTP Date do servidor ESPN (UTC - 3h = Horário de Brasília)
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                const res = await fetch("https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&week=1", {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                const dateHeader = res.headers.get("date");
+                if (dateHeader) {
+                    const utcMs = Date.parse(dateHeader);
+                    if (!isNaN(utcMs)) {
+                        const brtMs = utcMs - (3 * 3600 * 1000); // Converte UTC para Brasília (UTC-3)
+                        const d = new Date(brtMs);
+                        this.baseTimestamp = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds());
+                        this.perfAtSync = performance.now();
+                        this.synced = true;
+                        this.source = "Servidor ESPN (Internet)";
+                        this.lastSyncISO = new Date().toISOString();
+                        console.log(`[Relógio Brasília] Sincronizado via ${this.source}`);
+                        return true;
+                    }
+                }
+            } catch (e) {
+                console.warn("[Relógio Brasília] Falha na fonte 4 (ESPN Header):", e.message);
+            }
+
+            console.error("[Relógio Brasília] Erro: nenhuma das fontes de horário na Internet respondeu.");
+            return false;
+        })();
+
+        const res = await this.syncPromise;
+        this.syncPromise = null;
+        return res;
+    }
+};
+
+// Inicia a sincronização com a internet imediatamente no carregamento
+if (typeof window !== "undefined") {
+    window.BrasiliaInternetClock = BrasiliaInternetClock;
+    BrasiliaInternetClock.sync();
+}
+
+// Converte a data e horário cadastrados do jogo (já referenciados em Brasília) em timestamp comparável
+function getMatchKickoffTimestamp(match) {
     if (!match || !match.date || !match.time) return null;
+    if (String(match.time).toUpperCase().trim() === "TBD") return null;
+
     try {
-        // Formatos aceitos ex: "Qua, 9/09", "Qui, 10/09", "10/09", "10/09/2026"
+        // Exemplos aceitos: "Qua, 9/09", "Qui, 10/09", "Dom, 13/09", "10/09", "10/09/2026"
         const parts = match.date.split(",");
         const datePart = (parts.length > 1 ? parts[1] : parts[0]).trim();
         const dateSegments = datePart.split("/").map(s => s.trim());
+        if (dateSegments.length < 2) return null;
 
         const day = parseInt(dateSegments[0], 10);
-        const month = parseInt(dateSegments[1], 10) - 1;
+        const month = parseInt(dateSegments[1], 10);
 
         const timeParts = match.time.split(":").map(s => s.trim());
+        if (timeParts.length < 2) return null;
         const hour = parseInt(timeParts[0], 10);
         const min = parseInt(timeParts[1], 10);
 
@@ -2862,39 +3051,62 @@ function parseMatchKickoffDate(match) {
             return null;
         }
 
+        // Temporada NFL 2026-2027:
+        // Meses 8 a 12 (Setembro a Dezembro) = 2026
+        // Meses 1 a 7 (Janeiro a Julho) = 2027
         let year;
         if (dateSegments.length >= 3 && !isNaN(parseInt(dateSegments[2], 10))) {
             year = parseInt(dateSegments[2], 10);
         } else if (match.year && !isNaN(parseInt(match.year, 10))) {
             year = parseInt(match.year, 10);
         } else {
-            const now = new Date();
-            const currentYear = now.getFullYear();
-            // Se o mês for setembro (8) a dezembro (11), usa o ano atual
-            year = (month >= 8) ? currentYear : (currentYear + 1);
+            year = (month >= 8) ? 2026 : 2027;
         }
 
-        const d = new Date(year, month, day, hour, min, 0);
-        return isNaN(d.getTime()) ? null : d;
+        // Como ambos estão no referencial de Brasília, Date.UTC cria o marco temporal sem alteração de fuso
+        return Date.UTC(year, month - 1, day, hour, min, 0);
     } catch (err) {
-        console.error("Erro ao converter data do jogo:", err);
+        console.error("Erro ao converter horário cadastrado do jogo:", err);
         return null;
     }
 }
 
+// Mantido para compatibilidade retroativa
+function parseMatchKickoffDate(match) {
+    const ts = getMatchKickoffTimestamp(match);
+    return ts ? new Date(ts) : null;
+}
+
+// Bloqueia apenas jogos que já iniciaram ou terminaram, confrontando com o horário de Brasília da Internet
 function isMatchLockedByTime(match) {
     if (!match) return false;
 
-    // Se a partida foi finalizada ou está em andamento oficialmente
-    if (match.status === "finished" || match.status === "in_progress") return true;
+    // 1. Partida oficialmente finalizada ou em andamento
+    if (match.status === "finished" || match.status === "in_progress") {
+        return true;
+    }
 
-    // Se já tiver placar oficial cadastrado (score1 e score2 preenchidos)
+    // 2. Placar oficial preenchido (jogo já aconteceu/está acontecendo)
     if (match.score1 !== null && match.score1 !== undefined && match.score1 !== "" &&
         match.score2 !== null && match.score2 !== undefined && match.score2 !== "") {
         return true;
     }
 
-    // Caso contrário, a partida está aberta para palpites!
+    // 3. Confronte diretamente com o horário cadastrado do jogo
+    const kickoffTimestamp = getMatchKickoffTimestamp(match);
+    if (!kickoffTimestamp) {
+        // Horário não definido ainda (ex: "TBD"): jogo ainda não iniciou
+        return false;
+    }
+
+    // Consulta a data e hora de Brasília obtidas na Internet (nunca o relógio do computador)
+    const currentBrasiliaTime = BrasiliaInternetClock.getNowTimestamp();
+    if (currentBrasiliaTime !== null && currentBrasiliaTime >= kickoffTimestamp) {
+        // Horário atual de Brasília já alcançou ou passou do horário do jogo -> BLOQUEADO!
+        return true;
+    }
+
+    // Caso contrário, jogo futuro -> ABERTO para apostas!
     return false;
 }
 
