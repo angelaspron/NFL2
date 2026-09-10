@@ -47,6 +47,8 @@ const INITIAL_BOLAO_DATA = {
         adminPassword: "Pats87",
         autoSyncEspn: false
     },
+    auditLogs: [],
+    predictions: {},
     participants: [
         { id: "user_angel", name: "Angel", avatar: "\u{1F3C8}", favTeam: "KC", createdAt: "2026-09-01T10:00:00Z" },
         { id: "user_caio", name: "Caio", avatar: "\u{26A1}", favTeam: "LAC", createdAt: "2026-09-01T10:00:00Z" },
@@ -2803,9 +2805,11 @@ function loadBolaoData() {
         if (saved) {
             const parsed = JSON.parse(saved);
             if (parsed.matches && parsed.matches.length > 0) {
-                // Garante que configuraÃ§Ãµes tenham adminPassword
+                // Garante que configurações tenham adminPassword e auditLogs
                 if (!parsed.settings) parsed.settings = {};
                 if (!parsed.settings.adminPassword) parsed.settings.adminPassword = "Pats87";
+                if (!parsed.auditLogs) parsed.auditLogs = [];
+                if (!parsed.predictions) parsed.predictions = {};
                 return parsed;
             }
         }
@@ -2813,6 +2817,63 @@ function loadBolaoData() {
         console.error("Erro ao carregar dados do localStorage:", e);
     }
     return JSON.parse(JSON.stringify(INITIAL_BOLAO_DATA));
+}
+
+let cachedUserIp = null;
+async function fetchUserIp() {
+    if (cachedUserIp) return cachedUserIp;
+    try {
+        const res = await fetch("https://api.ipify.org?format=json");
+        if (res.ok) {
+            const json = await res.json();
+            if (json && json.ip) {
+                cachedUserIp = json.ip;
+                return cachedUserIp;
+            }
+        }
+    } catch (e) {
+        console.warn("Não foi possível obter o IP via ipify:", e);
+    }
+    cachedUserIp = "Desconhecido/Local";
+    return cachedUserIp;
+}
+
+function parseMatchKickoffDate(match) {
+    if (!match || !match.date || !match.time) return null;
+    try {
+        // Formato original ex: "Qui, 10/09" ou "Dom, 13/09"
+        const parts = match.date.split(",");
+        const datePart = (parts[1] || parts[0]).trim(); // "10/09"
+        const [dayStr, monthStr] = datePart.split("/");
+        const [hourStr, minStr] = match.time.split(":");
+
+        const day = parseInt(dayStr, 10);
+        const month = parseInt(monthStr, 10) - 1; // 0-indexed
+        const hour = parseInt(hourStr, 10);
+        const min = parseInt(minStr, 10);
+
+        // Temporada 2026-2027: Setembro-Dezembro 2026, Janeiro 2027
+        const year = (month >= 8) ? 2026 : 2027;
+
+        // Criar data no fuso de São Paulo (UTC-3)
+        const dt = new Date(Date.UTC(year, month, day, hour + 3, min));
+        return dt;
+    } catch (err) {
+        console.error("Erro ao converter data do jogo:", err);
+        return null;
+    }
+}
+
+function isMatchLockedByTime(match) {
+    if (!match) return false;
+    if (match.status === "finished" || match.status === "in_progress") return true;
+    if (match.score1 !== null && match.score1 !== undefined && match.score1 !== "") return true;
+
+    const kickoffDate = parseMatchKickoffDate(match);
+    if (!kickoffDate) return false;
+
+    // Se o momento atual for igual ou posterior ao kickoff, trava o palpite
+    return Date.now() >= kickoffDate.getTime();
 }
 
 function saveBolaoData(data) {
@@ -2847,6 +2908,7 @@ async function fetchRemoteBolaoData() {
         }
 
         if (data && data.data) {
+            if (!data.data.auditLogs) data.data.auditLogs = [];
             localStorage.setItem("nfl_bolao_2026_data_v2", JSON.stringify(data.data));
             return data.data;
         }
@@ -2867,6 +2929,7 @@ function setupRealtimeSubscription(onRemoteUpdateCallback) {
             (payload) => {
                 if (payload.new && payload.new.data) {
                     const newData = payload.new.data;
+                    if (!newData.auditLogs) newData.auditLogs = [];
                     localStorage.setItem("nfl_bolao_2026_data_v2", JSON.stringify(newData));
                     if (onRemoteUpdateCallback) {
                         onRemoteUpdateCallback(newData);

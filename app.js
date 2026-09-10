@@ -10,6 +10,7 @@ class BolaoApp {
         this.activeUserId = this.data.participants[0]?.id || "user_angel";
         this.isAdmin = false;
         this.pendingAdminCallback = null;
+        this.tableZoomLevel = 100; // Zoom em % para a Tabela Geral (70% - 150%)
 
         this.init();
     }
@@ -417,6 +418,8 @@ class BolaoApp {
             this.renderCardsView();
         } else if (this.currentView === "leaderboard") {
             this.renderLeaderboardView();
+        } else if (this.currentView === "logs") {
+            this.renderLogsView();
         } else if (this.currentView === "admin") {
             this.renderAdminView();
         } else if (this.currentView === "settings") {
@@ -549,15 +552,31 @@ class BolaoApp {
                         </span>
                         <span class="season-tag">${currentMatches.length} JOGOS</span>
                     </div>
-                    <div style="display: flex; gap: 0.5rem;">
+                    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                        <!-- Controles de Zoom da Tabela -->
+                        <div class="zoom-controls-wrap" style="display: flex; align-items: center; gap: 0.25rem; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--border-subtle); padding: 0.2rem 0.4rem; border-radius: var(--radius-md);">
+                            <button class="btn btn-secondary" id="btnZoomOutTable" style="font-size: 0.8rem; padding: 0.25rem 0.55rem;" title="Reduzir Tamanho (Zoom Out)">
+                                🔍-
+                            </button>
+                            <span id="zoomLevelDisplay" style="font-size: 0.8rem; font-weight: 700; color: #38BDF8; min-width: 45px; text-align: center; font-family: var(--font-display);">
+                                ${this.tableZoomLevel || 100}%
+                            </span>
+                            <button class="btn btn-secondary" id="btnZoomInTable" style="font-size: 0.8rem; padding: 0.25rem 0.55rem;" title="Aumentar Tamanho (Zoom In)">
+                                🔍+
+                            </button>
+                            <button class="btn btn-secondary" id="btnZoomResetTable" style="font-size: 0.75rem; padding: 0.25rem 0.45rem; color: var(--text-muted);" title="Restaurar Tamanho Original (100%)">
+                                ↺ 100%
+                            </button>
+                        </div>
+
                         <button class="btn btn-secondary" id="btnQuickEditScores" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
                             ⚙️ Lançar Placares Reais
                         </button>
                     </div>
                 </div>
 
-                <div class="table-responsive-wrapper">
-                    <table class="bolao-table">
+                <div class="table-responsive-wrapper" id="tableWrapper">
+                    <table class="bolao-table" id="bolaoMainTable" style="transform-origin: top left; zoom: ${(this.tableZoomLevel || 100) / 100};">
                         <thead>
                             <tr class="participant-header-row">
                                 <th colspan="3" class="col-sticky-1" style="text-align: left; padding-left: 1rem;">CALENDÁRIO</th>
@@ -698,6 +717,44 @@ class BolaoApp {
 
         mainContent.innerHTML = tableHtml;
 
+        const updateZoomUI = () => {
+            const table = document.getElementById("bolaoMainTable");
+            const display = document.getElementById("zoomLevelDisplay");
+            if (table) {
+                table.style.zoom = `${this.tableZoomLevel / 100}`;
+                // Fallback para navegadores sem suporte a css zoom (Firefox/Webkit transform)
+                table.style.transform = `scale(${this.tableZoomLevel / 100})`;
+                table.style.transformOrigin = "top left";
+                if (this.tableZoomLevel !== 100) {
+                    table.style.width = `${10000 / this.tableZoomLevel}%`;
+                } else {
+                    table.style.width = "100%";
+                }
+            }
+            if (display) {
+                display.textContent = `${this.tableZoomLevel}%`;
+            }
+        };
+
+        document.getElementById("btnZoomInTable")?.addEventListener("click", () => {
+            if (this.tableZoomLevel < 160) {
+                this.tableZoomLevel += 10;
+                updateZoomUI();
+            }
+        });
+
+        document.getElementById("btnZoomOutTable")?.addEventListener("click", () => {
+            if (this.tableZoomLevel > 60) {
+                this.tableZoomLevel -= 10;
+                updateZoomUI();
+            }
+        });
+
+        document.getElementById("btnZoomResetTable")?.addEventListener("click", () => {
+            this.tableZoomLevel = 100;
+            updateZoomUI();
+        });
+
         document.getElementById("btnQuickEditScores")?.addEventListener("click", () => {
             this.switchView("admin");
         });
@@ -736,22 +793,29 @@ class BolaoApp {
             const team2 = NFL_TEAMS[match.team2] || { name: match.team2, shortName: match.team2, logo: "" };
             const pred = this.data.predictions[match.id]?.[activeUser.id] || { winner: null, diff: 3 };
             const official = this.getMatchOfficialResult(match);
+            const isLocked = isMatchLockedByTime(match) && !this.isAdmin;
 
             const isTeam1Selected = (pred.winner === match.team1);
             const isTeam2Selected = (pred.winner === match.team2);
 
             html += `
-                <div class="match-bet-card" data-match-id="${match.id}">
+                <div class="match-bet-card ${isLocked ? 'locked-match' : ''}" data-match-id="${match.id}">
                     <div class="match-bet-header">
                         <span class="match-time-tag">
                             📅 ${match.date} • ⏰ ${match.time} BRT
                         </span>
-                        <span class="match-status-badge ${official.finished ? 'finished' : 'scheduled'}">
-                            ${official.finished ? `Final: ${match.score1} x ${match.score2}` : 'Em Breve'}
+                        <span class="match-status-badge ${official.finished ? 'finished' : (isLocked ? 'locked' : 'scheduled')}">
+                            ${official.finished ? `Final: ${match.score1} x ${match.score2}` : (isLocked ? '🔒 Apostas Encerradas' : 'Em Breve')}
                         </span>
                     </div>
 
-                    <div class="teams-versus-row">
+                    ${isLocked ? `
+                        <div class="lock-overlay-banner" style="background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #F87171; padding: 0.4rem; border-radius: var(--radius-sm); font-size: 0.78rem; text-align: center; font-weight: 700; margin-bottom: 0.75rem;">
+                            🔒 Apostas encerradas para este jogo (iniciado/finalizado)
+                        </div>
+                    ` : ''}
+
+                    <div class="teams-versus-row ${isLocked ? 'disabled-controls' : ''}" style="${isLocked ? 'opacity: 0.65; pointer-events: none;' : ''}">
                         <!-- Visitante (Time 1) -->
                         <div class="team-bet-select ${isTeam1Selected ? 'selected' : ''}" data-team="${match.team1}">
                             <img src="${team1.logo}" alt="${team1.name}" class="team-card-logo">
@@ -778,15 +842,15 @@ class BolaoApp {
                     </div>
 
                     <!-- Controle de Diferença -->
-                    <div class="bet-diff-control">
+                    <div class="bet-diff-control ${isLocked ? 'disabled-controls' : ''}" style="${isLocked ? 'opacity: 0.65; pointer-events: none;' : ''}">
                         <div class="bet-diff-label">
                             <span class="bet-diff-title">Diferença do Placar (DIF)</span>
                             <span class="bet-diff-desc">Por quantos pontos o time escolhido vai vencer?</span>
                         </div>
                         <div class="stepper-control">
-                            <button class="stepper-btn btn-stepper-minus" type="button">-</button>
-                            <input type="number" class="stepper-value input-diff-val" min="1" max="99" value="${pred.diff || 3}">
-                            <button class="stepper-btn btn-stepper-plus" type="button">+</button>
+                            <button class="stepper-btn btn-stepper-minus" type="button" ${isLocked ? 'disabled' : ''}>-</button>
+                            <input type="number" class="stepper-value input-diff-val" min="1" max="99" value="${pred.diff || 3}" ${isLocked ? 'disabled' : ''}>
+                            <button class="stepper-btn btn-stepper-plus" type="button" ${isLocked ? 'disabled' : ''}>+</button>
                         </div>
                     </div>
 
@@ -824,13 +888,21 @@ class BolaoApp {
         const cards = document.querySelectorAll(".match-bet-card");
         cards.forEach(card => {
             const matchId = card.dataset.matchId;
+            const match = this.data.matches.find(m => m.id === matchId);
+            const isLocked = isMatchLockedByTime(match) && !this.isAdmin;
+
             const teamSelects = card.querySelectorAll(".team-bet-select");
             const diffInput = card.querySelector(".input-diff-val");
             const btnMinus = card.querySelector(".btn-stepper-minus");
             const btnPlus = card.querySelector(".btn-stepper-plus");
 
             teamSelects.forEach(btn => {
-                btn.addEventListener("click", () => {
+                btn.addEventListener("click", async () => {
+                    if (isLocked) {
+                        this.showToast("🔒 Partida iniciada/finalizada. Alterações de apostas estão travadas!", "danger");
+                        return;
+                    }
+
                     const chosenTeam = btn.dataset.team;
                     teamSelects.forEach(b => b.classList.remove("selected"));
                     btn.classList.add("selected");
@@ -838,13 +910,17 @@ class BolaoApp {
                     if (!this.data.predictions[matchId]) {
                         this.data.predictions[matchId] = {};
                     }
+
+                    const oldPred = this.data.predictions[matchId][userId] ? { ...this.data.predictions[matchId][userId] } : null;
                     if (!this.data.predictions[matchId][userId]) {
                         this.data.predictions[matchId][userId] = { winner: null, diff: 3 };
                     }
                     this.data.predictions[matchId][userId].winner = chosenTeam;
                     this.data.predictions[matchId][userId].diff = parseInt(diffInput.value, 10) || 1;
 
+                    const newPred = { ...this.data.predictions[matchId][userId] };
                     saveBolaoData(this.data);
+                    await this.logBetChange(matchId, userId, oldPred, newPred);
                     this.renderCardsView();
                     this.showToast(`Palpite salvo: ${NFL_TEAMS[chosenTeam]?.shortName} por ${diffInput.value} pts!`, "success");
                 });
@@ -880,15 +956,240 @@ class BolaoApp {
         });
     }
 
-    updatePredictionDiff(matchId, userId, newDiff) {
+    async logBetChange(matchId, userId, oldPred, newPred) {
+        const match = this.data.matches.find(m => m.id === matchId);
+        const participant = this.data.participants.find(p => p.id === userId);
+        if (!match || !participant) return;
+
+        const team1 = NFL_TEAMS[match.team1]?.shortName || match.team1;
+        const team2 = NFL_TEAMS[match.team2]?.shortName || match.team2;
+        const matchTitle = `Semana ${match.week}: ${team1} vs ${team2}`;
+
+        const formatPred = (p) => {
+            if (!p || !p.winner) return "Nenhum palpite";
+            const wName = NFL_TEAMS[p.winner]?.shortName || p.winner;
+            return `${wName} por ${p.diff || 1} pts`;
+        };
+
+        const oldText = formatPred(oldPred);
+        const newText = formatPred(newPred);
+
+        if (oldText === newText) return; // Nenhuma mudança real
+
+        const ip = await fetchUserIp();
+        const now = new Date();
+        const formattedDate = now.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
+
+        const logEntry = {
+            id: "log_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
+            timestampIso: now.toISOString(),
+            timestampBrt: formattedDate,
+            userId: participant.id,
+            userName: participant.name,
+            userAvatar: participant.avatar || "🏈",
+            matchId: match.id,
+            matchTitle: matchTitle,
+            week: match.week,
+            oldBet: oldText,
+            newBet: newText,
+            ip: ip,
+            updatedBy: this.isAdmin ? "Administrador" : "Usuário"
+        };
+
+        if (!this.data.auditLogs) this.data.auditLogs = [];
+        this.data.auditLogs.unshift(logEntry); // Novo log no topo
+
+        // Limita a 500 registros para economizar espaço
+        if (this.data.auditLogs.length > 500) {
+            this.data.auditLogs = this.data.auditLogs.slice(0, 500);
+        }
+
+        saveBolaoData(this.data);
+    }
+
+    async updatePredictionDiff(matchId, userId, newDiff) {
+        const match = this.data.matches.find(m => m.id === matchId);
+        if (isMatchLockedByTime(match) && !this.isAdmin) {
+            this.showToast("🔒 Partida iniciada/finalizada. Alterações de apostas estão travadas!", "danger");
+            this.renderCardsView();
+            return;
+        }
+
         if (!this.data.predictions[matchId]) this.data.predictions[matchId] = {};
+        const oldPred = this.data.predictions[matchId][userId] ? { ...this.data.predictions[matchId][userId] } : null;
+
         if (!this.data.predictions[matchId][userId]) {
             this.data.predictions[matchId][userId] = { winner: null, diff: newDiff };
         } else {
             this.data.predictions[matchId][userId].diff = newDiff;
         }
+
+        const newPred = { ...this.data.predictions[matchId][userId] };
         saveBolaoData(this.data);
+        await this.logBetChange(matchId, userId, oldPred, newPred);
         this.renderCardsView();
+    }
+
+    // =========================================================================
+    // VISÃO: LOGS DE AUDITORIA (DATA, HORA E IP DAS APOSTAS)
+    // =========================================================================
+    renderLogsView() {
+        const mainContent = document.getElementById("mainContentArea");
+        if (!mainContent) return;
+
+        const logs = this.data.auditLogs || [];
+        const participants = this.data.participants;
+
+        let html = `
+            <div class="table-container-card">
+                <div class="table-toolbar" style="flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <span style="font-size: 1.25rem; font-weight: 800; font-family: var(--font-display); color: #FFFFFF;">
+                            📜 LOGS DE CONSULTA & AUDITORIA DE APOSTAS
+                        </span>
+                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.2rem;">
+                            Histórico de alterações com data, hora (BRT) e endereço IP de onde o palpite foi registrado.
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <span class="season-tag" id="logCountTag">${logs.length} REGISTROS</span>
+                        <button class="btn btn-secondary" id="btnRefreshLogs" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
+                            🔄 Atualizar Logs
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filtros de Busca de Logs -->
+                <div style="padding: 1rem 1.25rem; background: rgba(15, 23, 42, 0.6); border-bottom: 1px solid var(--border-subtle); display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <label class="form-label" style="margin: 0; font-size: 0.82rem;">Filtrar Participante:</label>
+                        <select id="filterLogUser" class="form-select" style="font-size: 0.85rem; padding: 0.35rem 0.65rem;">
+                            <option value="">Todos os Amigos</option>
+                            ${participants.map(p => `<option value="${p.id}">${p.avatar || '🏈'} ${p.name}</option>`).join("")}
+                        </select>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <label class="form-label" style="margin: 0; font-size: 0.82rem;">Buscar por Jogo/IP:</label>
+                        <input type="text" id="filterLogQuery" class="form-input" placeholder="Ex: Chiefs ou 189.120..." style="font-size: 0.85rem; padding: 0.35rem 0.65rem; min-width: 200px;">
+                    </div>
+                </div>
+
+                <div class="table-responsive-wrapper">
+                    <table class="bolao-table" id="tableAuditLogs">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left; padding-left: 1rem;">DATA & HORA (BRT)</th>
+                                <th style="text-align: left;">PARTICIPANTE</th>
+                                <th style="text-align: left;">CONFRONTO / SEMANA</th>
+                                <th style="text-align: left;">PALPITE ANTERIOR</th>
+                                <th style="text-align: left;">NOVO PALPITE</th>
+                                <th style="text-align: center;">ENDEREÇO IP</th>
+                                <th style="text-align: center;">ALTERADO POR</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyAuditLogs">
+        `;
+
+        if (logs.length === 0) {
+            html += `
+                <tr>
+                    <td colspan="7" style="padding: 3rem; text-align: center; color: var(--text-muted);">
+                        Nenhuma alteração de aposta registrada até o momento.
+                    </td>
+                </tr>
+            `;
+        } else {
+            html += this.generateLogsRowsHtml(logs);
+        }
+
+        html += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+
+        mainContent.innerHTML = html;
+        this.bindLogsViewEvents();
+    }
+
+    generateLogsRowsHtml(logsList) {
+        return logsList.map(log => `
+            <tr>
+                <td style="text-align: left; padding-left: 1rem; color: #38BDF8; font-weight: 700; font-family: var(--font-display); white-space: nowrap;">
+                    🕒 ${log.timestampBrt || log.timestampIso}
+                </td>
+                <td style="text-align: left; font-weight: 700; color: #FFFFFF;">
+                    ${log.userAvatar || '🏈'} ${log.userName}
+                </td>
+                <td style="text-align: left; color: #CBD5E1;">
+                    ${log.matchTitle}
+                </td>
+                <td style="text-align: left; color: #94A3B8; text-decoration: line-through;">
+                    ${log.oldBet}
+                </td>
+                <td style="text-align: left; color: #34D399; font-weight: 700;">
+                    ${log.newBet}
+                </td>
+                <td style="text-align: center;">
+                    <span style="background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.3); color: #38BDF8; padding: 0.2rem 0.55rem; border-radius: var(--radius-sm); font-family: monospace; font-size: 0.85rem;">
+                        🌐 ${log.ip || 'Desconhecido'}
+                    </span>
+                </td>
+                <td style="text-align: center;">
+                    <span class="season-tag" style="font-size: 0.7rem; background: ${log.updatedBy === 'Administrador' ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)'}; border-color: ${log.updatedBy === 'Administrador' ? '#F59E0B' : '#10B981'}; color: ${log.updatedBy === 'Administrador' ? '#FCD34D' : '#6EE7B7'};">
+                        ${log.updatedBy || 'Usuário'}
+                    </span>
+                </td>
+            </tr>
+        `).join("");
+    }
+
+    bindLogsViewEvents() {
+        const userSelect = document.getElementById("filterLogUser");
+        const queryInput = document.getElementById("filterLogQuery");
+        const tbody = document.getElementById("tbodyAuditLogs");
+        const countTag = document.getElementById("logCountTag");
+
+        const applyFilter = () => {
+            const userId = userSelect?.value;
+            const query = (queryInput?.value || "").toLowerCase().trim();
+
+            let filtered = this.data.auditLogs || [];
+            if (userId) {
+                filtered = filtered.filter(l => l.userId === userId);
+            }
+            if (query) {
+                filtered = filtered.filter(l => 
+                    (l.matchTitle && l.matchTitle.toLowerCase().includes(query)) ||
+                    (l.ip && l.ip.toLowerCase().includes(query)) ||
+                    (l.userName && l.userName.toLowerCase().includes(query)) ||
+                    (l.newBet && l.newBet.toLowerCase().includes(query))
+                );
+            }
+
+            if (countTag) countTag.textContent = `${filtered.length} REGISTROS`;
+            if (tbody) {
+                if (filtered.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" style="padding: 2.5rem; text-align: center; color: var(--text-muted);">
+                                Nenhum log encontrado para os filtros selecionados.
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    tbody.innerHTML = this.generateLogsRowsHtml(filtered);
+                }
+            }
+        };
+
+        userSelect?.addEventListener("change", applyFilter);
+        queryInput?.addEventListener("input", applyFilter);
+        document.getElementById("btnRefreshLogs")?.addEventListener("click", () => {
+            this.renderLogsView();
+            this.showToast("Logs de auditoria atualizados!", "info");
+        });
     }
 
     // =========================================================================
