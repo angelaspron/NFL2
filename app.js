@@ -15,8 +15,20 @@ class BolaoApp {
         this.init();
     }
 
+    sanitizeDataMatches() {
+        if (!this.data || !Array.isArray(this.data.matches)) return;
+        this.data.matches.forEach(m => {
+            if (m.status === "scheduled" || !m.status) {
+                m.score1 = null;
+                m.score2 = null;
+                m.status = "scheduled";
+            }
+        });
+    }
+
     async init() {
         this.bindEvents();
+        this.sanitizeDataMatches();
 
         // 1. Inicia sincronização do relógio de Brasília via Internet antes de renderizar
         if (typeof BrasiliaInternetClock !== "undefined") {
@@ -31,6 +43,7 @@ class BolaoApp {
         const remoteData = await fetchRemoteBolaoData();
         if (remoteData) {
             this.data = remoteData;
+            this.sanitizeDataMatches();
             this.renderAll();
         } else {
             // Se for o primeiro acesso e a nuvem ainda estiver vazia, salva a base atual na nuvem
@@ -196,13 +209,17 @@ class BolaoApp {
                     targetStatus = "scheduled";
                 }
 
-                if (isCompleted || isInProgress || (targetScore1 !== null && targetScore2 !== null)) {
-                    if (match.score1 !== targetScore1 || match.score2 !== targetScore2 || match.status !== targetStatus) {
-                        match.score1 = targetScore1;
-                        match.score2 = targetScore2;
-                        match.status = targetStatus;
-                        updatedCount++;
-                    }
+                // Se o jogo ainda não iniciou (scheduled), os placares devem obrigatoriamente ser mantidos como null (ESPN retorna 0 para jogos não iniciados)
+                if (!isCompleted && !isInProgress) {
+                    targetScore1 = null;
+                    targetScore2 = null;
+                }
+
+                if (match.score1 !== targetScore1 || match.score2 !== targetScore2 || match.status !== targetStatus) {
+                    match.score1 = targetScore1;
+                    match.score2 = targetScore2;
+                    match.status = targetStatus;
+                    updatedCount++;
                 }
             }
         });
@@ -342,7 +359,7 @@ class BolaoApp {
     // =========================================================================
     
     getMatchOfficialResult(match) {
-        if (match.score1 === null || match.score2 === null || match.score1 === undefined || match.score2 === undefined || match.score1 === "" || match.score2 === "") {
+        if (match.status === "scheduled" || match.score1 === null || match.score2 === null || match.score1 === undefined || match.score2 === undefined || match.score1 === "" || match.score2 === "") {
             return {
                 finished: false,
                 winner: null,

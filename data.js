@@ -3086,8 +3086,9 @@ function isMatchLockedByTime(match) {
         return true;
     }
 
-    // 2. Placar oficial preenchido (jogo já aconteceu/está acontecendo)
-    if (match.score1 !== null && match.score1 !== undefined && match.score1 !== "" &&
+    // 2. Placar oficial preenchido (jogo já aconteceu/está acontecendo - apenas se status NÃO for "scheduled")
+    if (match.status !== "scheduled" &&
+        match.score1 !== null && match.score1 !== undefined && match.score1 !== "" &&
         match.score2 !== null && match.score2 !== undefined && match.score2 !== "") {
         return true;
     }
