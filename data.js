@@ -2841,21 +2841,28 @@ async function fetchUserIp() {
 function parseMatchKickoffDate(match) {
     if (!match || !match.date || !match.time) return null;
     try {
-        // Formato original ex: "Qui, 10/09" ou "Dom, 13/09"
+        // Formato original ex: "Qui, 10/09" ou "Dom, 13/09" ou "10/09/2026"
         const parts = match.date.split(",");
-        const datePart = (parts[1] || parts[0]).trim(); // "10/09"
-        const [dayStr, monthStr] = datePart.split("/");
-        const [hourStr, minStr] = match.time.split(":");
+        const datePart = (parts[1] || parts[0]).trim(); // "10/09" ou "10/09/2026"
+        const dateSegments = datePart.split("/");
+        const day = parseInt(dateSegments[0], 10);
+        const month = parseInt(dateSegments[1], 10) - 1; // 0-indexed
 
-        const day = parseInt(dayStr, 10);
-        const month = parseInt(monthStr, 10) - 1; // 0-indexed
+        const [hourStr, minStr] = match.time.split(":");
         const hour = parseInt(hourStr, 10);
         const min = parseInt(minStr, 10);
 
-        // Temporada 2026-2027: Setembro-Dezembro 2026, Janeiro 2027
-        const year = (month >= 8) ? 2026 : 2027;
+        let year;
+        if (dateSegments.length >= 3) {
+            year = parseInt(dateSegments[2], 10);
+        } else if (match.year) {
+            year = parseInt(match.year, 10);
+        } else {
+            // Tenta obter o ano atual da máquina ou assume 2026
+            const currentYear = new Date().getFullYear();
+            year = (month >= 8) ? currentYear : (currentYear + 1);
+        }
 
-        // Criar data utilizando o fuso/horário local exatamente como consta na tabela
         return new Date(year, month, day, hour, min, 0);
     } catch (err) {
         console.error("Erro ao converter data do jogo:", err);
