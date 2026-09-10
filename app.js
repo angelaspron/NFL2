@@ -37,8 +37,9 @@ class BolaoApp {
             saveBolaoData(this.data);
         }
 
-        // Ativa a sincronização automática com a ESPN se configurada
-        if (this.data.settings.autoSyncEspn) {
+        // Ativa e executa a sincronização com a ESPN ao abrir o app
+        this.syncWeekFromEspn(this.currentWeek, false);
+        if (this.data.settings.autoSyncEspn !== false) {
             this.startAutoSyncEspn();
         }
     }

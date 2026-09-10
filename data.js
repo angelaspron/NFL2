@@ -45,7 +45,7 @@ const INITIAL_BOLAO_DATA = {
         pointsExactDiff: 1,
         timezone: "America/Sao_Paulo",
         adminPassword: "Pats87",
-        autoSyncEspn: false
+        autoSyncEspn: true
     },
     auditLogs: [],
     predictions: {},
