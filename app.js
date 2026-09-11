@@ -2417,10 +2417,20 @@ class BolaoApp {
 
     async fetchEspnLeaders() {
         try {
+            // Tenta o endpoint principal de leaderboards da ESPN e fallback para estatísticas da temporada
             const res = await fetch("https://site.api.espn.com/apis/site/v2/sports/football/nfl/leaderboards");
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            return data;
+            if (res.ok) {
+                const data = await res.json();
+                if (data && (data.leaderboards || data.leaders)) return data;
+            }
+            
+            // Endpoint alternativo oficial de leaders
+            const resAlt = await fetch("https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event=401547379");
+            if (resAlt.ok) {
+                const dataAlt = await resAlt.json();
+                if (dataAlt.leaders) return { leaderboards: dataAlt.leaders };
+            }
+            return null;
         } catch (err) {
             console.error("Erro ao buscar Líderes de Jogadores da ESPN:", err);
             return null;
@@ -2496,7 +2506,7 @@ class BolaoApp {
         if (!subContent) return;
 
         const standingsData = await this.fetchEspnStandings();
-        if (!standingsData || !standingsData.children) {
+        if (!standingsData || (!standingsData.children && !standingsData.standings)) {
             subContent.innerHTML = `
                 <div style="text-align: center; padding: 2rem; color: #EF4444;">
                     ⚠️ Não foi possível carregar a classificação da ESPN no momento. Tente novamente mais tarde.
@@ -2507,26 +2517,30 @@ class BolaoApp {
 
         let html = `<div style="display: flex; flex-direction: column; gap: 2rem;">`;
 
-        // Itera sobre as conferências (AFC e NFC)
-        standingsData.children.forEach(conf => {
-            const confName = conf.name || "Conferência";
+        const confs = standingsData.children || [standingsData];
+
+        confs.forEach(conf => {
+            const confName = conf.name || conf.displayName || "NFL";
             const isAFC = confName.toUpperCase().includes("AMERICAN") || confName.toUpperCase().includes("AFC");
-            const badgeColor = isAFC ? "#D50A0A" : "#00338D";
+            const isNFC = confName.toUpperCase().includes("NATIONAL") || confName.toUpperCase().includes("NFC");
+            const badgeColor = isAFC ? "#D50A0A" : isNFC ? "#00338D" : "#013369";
 
             html += `
                 <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-glass); border-radius: 12px; padding: 1.2rem;">
                     <h3 style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 800; color: #FFF; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="background: ${badgeColor}; padding: 0.25rem 0.6rem; border-radius: 6px; font-size: 0.8rem;">${isAFC ? 'AFC' : 'NFC'}</span>
+                        <span style="background: ${badgeColor}; padding: 0.25rem 0.6rem; border-radius: 6px; font-size: 0.8rem;">${isAFC ? 'AFC' : isNFC ? 'NFC' : 'NFL'}</span>
                         ${confName}
                     </h3>
             `;
 
-            // Divisões dentro da Conferência
-            if (conf.children) {
-                conf.children.forEach(div => {
-                    const divName = div.name || "Divisão";
-                    const entries = div.standings?.entries || [];
+            // Divisões dentro da Conferência ou lista direta
+            const divList = conf.children || [conf];
 
+            divList.forEach(div => {
+                const divName = div.name || div.displayName || "Classificação";
+                const entries = div.standings?.entries || div.entries || [];
+
+                if (entries.length > 0) {
                     html += `
                         <div style="margin-bottom: 1.5rem;">
                             <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">
@@ -2558,22 +2572,22 @@ class BolaoApp {
                         const team = entry.team || {};
                         const stats = entry.stats || [];
                         const getStat = (name) => {
-                            const s = stats.find(item => item.name === name || item.shortDisplayName === name || item.type === name);
-                            return s ? s.displayValue : "-";
+                            const s = stats.find(item => item.name === name || item.shortDisplayName === name || item.type === name || item.abbreviation === name);
+                            return s ? (s.displayValue || s.value) : "-";
                         };
 
-                        const wins = getStat("wins");
-                        const losses = getStat("losses");
-                        const ties = getStat("ties");
-                        const winPercent = getStat("winPercent");
-                        const pointsFor = getStat("pointsFor");
-                        const pointsAgainst = getStat("pointsAgainst");
-                        const diff = getStat("pointDifferential");
-                        const homeRecord = getStat("Home") || getStat("home");
-                        const roadRecord = getStat("Road") || getStat("away");
-                        const divRecord = getStat("Division") || getStat("division");
-                        const confRecord = getStat("Conference") || getStat("conf");
-                        const streak = getStat("streak");
+                        const wins = getStat("wins") !== "-" ? getStat("wins") : getStat("W");
+                        const losses = getStat("losses") !== "-" ? getStat("losses") : getStat("L");
+                        const ties = getStat("ties") !== "-" ? getStat("ties") : (getStat("T") !== "-" ? getStat("T") : "0");
+                        const winPercent = getStat("winPercent") !== "-" ? getStat("winPercent") : getStat("PCT");
+                        const pointsFor = getStat("pointsFor") !== "-" ? getStat("pointsFor") : getStat("PF");
+                        const pointsAgainst = getStat("pointsAgainst") !== "-" ? getStat("pointsAgainst") : getStat("PA");
+                        const diff = getStat("pointDifferential") !== "-" ? getStat("pointDifferential") : getStat("DIFF");
+                        const homeRecord = getStat("Home") || getStat("home") || "-";
+                        const roadRecord = getStat("Road") || getStat("away") || "-";
+                        const divRecord = getStat("Division") || getStat("division") || "-";
+                        const confRecord = getStat("Conference") || getStat("conf") || "-";
+                        const streak = getStat("streak") || "-";
 
                         const diffNum = parseInt(diff, 10);
                         const diffClass = !isNaN(diffNum) ? (diffNum > 0 ? "color: #10B981; font-weight: 700;" : diffNum < 0 ? "color: #EF4444;" : "") : "";
@@ -2582,7 +2596,7 @@ class BolaoApp {
                             <tr>
                                 <td style="text-align: left; display: flex; align-items: center; gap: 0.6rem; font-weight: 700;">
                                     ${team.logos?.[0]?.href ? `<img src="${team.logos[0].href}" alt="${team.shortDisplayName}" style="width: 22px; height: 22px; object-fit: contain;">` : ""}
-                                    <span>${team.displayName || team.name}</span>
+                                    <span>${team.displayName || team.name || team.shortDisplayName}</span>
                                 </td>
                                 <td><strong style="color: #FFF;">${wins}</strong></td>
                                 <td>${losses}</td>
@@ -2606,8 +2620,8 @@ class BolaoApp {
                             </div>
                         </div>
                     `;
-                });
-            }
+                }
+            });
 
             html += `</div>`;
         });
@@ -2686,46 +2700,51 @@ class BolaoApp {
         if (!subContent) return;
 
         const standingsData = await this.fetchEspnStandings();
-        if (!standingsData || !standingsData.children) {
+        if (!standingsData) {
             subContent.innerHTML = `<div style="text-align: center; padding: 2rem; color: #EF4444;">⚠️ Não foi possível carregar o comparativo no momento.</div>`;
             return;
         }
 
-        // Extrai todos os times em uma lista plana
+        // Extrai recursivamente todos os times dos Standings
         const allTeams = [];
-        standingsData.children.forEach(conf => {
-            if (conf.children) {
-                conf.children.forEach(div => {
-                    if (div.standings?.entries) {
-                        div.standings.entries.forEach(entry => {
-                            const team = entry.team || {};
-                            const stats = entry.stats || [];
-                            const getStatNum = (name) => {
-                                const s = stats.find(item => item.name === name || item.shortDisplayName === name || item.type === name);
-                                return s ? parseFloat(s.value || s.displayValue) : 0;
-                            };
-                            const getStatDisplay = (name) => {
-                                const s = stats.find(item => item.name === name || item.shortDisplayName === name || item.type === name);
-                                return s ? s.displayValue : "-";
-                            };
-
-                            allTeams.push({
-                                name: team.displayName || team.name,
-                                logo: team.logos?.[0]?.href || "",
-                                wins: getStatNum("wins"),
-                                losses: getStatNum("losses"),
-                                pointsFor: getStatNum("pointsFor"),
-                                pointsAgainst: getStatNum("pointsAgainst"),
-                                diff: getStatNum("pointDifferential"),
-                                diffDisplay: getStatDisplay("pointDifferential"),
-                                pfDisplay: getStatDisplay("pointsFor"),
-                                paDisplay: getStatDisplay("pointsAgainst")
-                            });
-                        });
-                    }
-                });
+        const extractEntries = (node) => {
+            if (!node) return;
+            if (node.standings?.entries) {
+                node.standings.entries.forEach(entry => addTeamEntry(entry));
+            } else if (node.entries) {
+                node.entries.forEach(entry => addTeamEntry(entry));
             }
-        });
+            if (node.children) {
+                node.children.forEach(child => extractEntries(child));
+            }
+        };
+
+        const addTeamEntry = (entry) => {
+            const team = entry.team || {};
+            const stats = entry.stats || [];
+            const getStatNum = (name) => {
+                const s = stats.find(item => item.name === name || item.shortDisplayName === name || item.type === name || item.abbreviation === name);
+                return s ? parseFloat(s.value || s.displayValue) : 0;
+            };
+            const getStatDisplay = (name) => {
+                const s = stats.find(item => item.name === name || item.shortDisplayName === name || item.type === name || item.abbreviation === name);
+                return s ? (s.displayValue || s.value) : "-";
+            };
+
+            const pf = getStatNum("pointsFor") || getStatNum("PF");
+            const pa = getStatNum("pointsAgainst") || getStatNum("PA");
+
+            allTeams.push({
+                name: team.displayName || team.name || team.shortDisplayName,
+                logo: team.logos?.[0]?.href || "",
+                pointsFor: pf,
+                pointsAgainst: pa,
+                pfDisplay: getStatDisplay("pointsFor") !== "-" ? getStatDisplay("pointsFor") : (getStatDisplay("PF") !== "-" ? getStatDisplay("PF") : pf),
+                paDisplay: getStatDisplay("pointsAgainst") !== "-" ? getStatDisplay("pointsAgainst") : (getStatDisplay("PA") !== "-" ? getStatDisplay("PA") : pa)
+            });
+        };
+
+        extractEntries(standingsData);
 
         const topOffenses = [...allTeams].sort((a, b) => b.pointsFor - a.pointsFor).slice(0, 10);
         const topDefenses = [...allTeams].sort((a, b) => a.pointsAgainst - b.pointsAgainst).slice(0, 10);
