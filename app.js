@@ -39,8 +39,8 @@ class BolaoApp {
 
         this.renderAll();
 
-        // Tenta buscar os dados atualizados da nuvem no arranque
-        const remoteData = await fetchRemoteBolaoData();
+        // Tenta buscar os dados atualizados da nuvem no arranque fazendo merge com os dados locais
+        const remoteData = await fetchRemoteBolaoData(this.data);
         if (remoteData) {
             this.data = remoteData;
             this.sanitizeDataMatches();
@@ -48,6 +48,15 @@ class BolaoApp {
         } else {
             // Se for o primeiro acesso e a nuvem ainda estiver vazia, salva a base atual na nuvem
             saveBolaoData(this.data);
+        }
+
+        // Configura escuta em tempo real com o Supabase
+        if (typeof setupRealtimeSubscription === "function") {
+            setupRealtimeSubscription((updatedData) => {
+                this.data = updatedData;
+                this.sanitizeDataMatches();
+                this.renderAll();
+            });
         }
 
         // Ativa e executa a sincronização com a ESPN ao abrir o app

@@ -3111,6 +3111,73 @@ function isMatchLockedByTime(match) {
     return false;
 }
 
+function mergeBolaoData(localData, remoteData) {
+    if (!remoteData) return localData;
+    if (!localData) return remoteData;
+
+    const merged = JSON.parse(JSON.stringify(remoteData));
+
+    // 1. Garante que partidas sigam a lista oficial de datas/times
+    merged.matches = INITIAL_BOLAO_DATA.matches;
+
+    // Preserve ou atualize os placares reais se existirem no remoto ou local
+    if (localData.matches && Array.isArray(localData.matches)) {
+        localData.matches.forEach(lm => {
+            const rm = merged.matches.find(m => m.id === lm.id);
+            if (rm) {
+                if (lm.score1 !== null && lm.score1 !== undefined) rm.score1 = lm.score1;
+                if (lm.score2 !== null && lm.score2 !== undefined) rm.score2 = lm.score2;
+                if (lm.status && lm.status !== "scheduled") rm.status = lm.status;
+            }
+        });
+    }
+
+    // 2. Mescla a lista de Participantes (para não sumir cadastros como João Pedro)
+    const participantMap = new Map();
+    (INITIAL_BOLAO_DATA.participants || []).forEach(p => participantMap.set(p.id, p));
+    (remoteData.participants || []).forEach(p => participantMap.set(p.id, p));
+    (localData.participants || []).forEach(p => participantMap.set(p.id, p));
+    merged.participants = Array.from(participantMap.values());
+
+    // 3. Mescla Palpites (predictions) - preserva palpites existentes de todos os participantes
+    merged.predictions = merged.predictions || {};
+    const localPreds = localData.predictions || {};
+
+    for (const matchId in localPreds) {
+        if (!merged.predictions[matchId]) {
+            merged.predictions[matchId] = {};
+        }
+        for (const userId in localPreds[matchId]) {
+            const localUserPred = localPreds[matchId][userId];
+            const remoteUserPred = merged.predictions[matchId][userId];
+
+            // Se existir no local mas não no remoto (ou se o local tiver vencedor preenchido e o remoto não), preserva o local
+            if (localUserPred && localUserPred.winner) {
+                if (!remoteUserPred || !remoteUserPred.winner) {
+                    merged.predictions[matchId][userId] = localUserPred;
+                }
+            }
+        }
+    }
+
+    // 4. Mescla Logs de Auditoria por ID único sem duplicar
+    const logMap = new Map();
+    (remoteData.auditLogs || []).forEach(l => { if (l && l.id) logMap.set(l.id, l); });
+    (localData.auditLogs || []).forEach(l => { if (l && l.id) logMap.set(l.id, l); });
+
+    merged.auditLogs = Array.from(logMap.values());
+    // Ordena logs pelo horário mais recente
+    merged.auditLogs.sort((a, b) => new Date(b.timestampIso || 0) - new Date(a.timestampIso || 0));
+    if (merged.auditLogs.length > 500) {
+        merged.auditLogs = merged.auditLogs.slice(0, 500);
+    }
+
+    if (!merged.settings) merged.settings = {};
+    if (!merged.settings.adminPassword) merged.settings.adminPassword = "Pats87";
+
+    return merged;
+}
+
 function saveBolaoData(data) {
     try {
         localStorage.setItem("nfl_bolao_2026_data_v2", JSON.stringify(data));
@@ -3128,7 +3195,7 @@ function saveBolaoData(data) {
     }
 }
 
-async function fetchRemoteBolaoData() {
+async function fetchRemoteBolaoData(currentLocalData = null) {
     if (!supabaseClient) return null;
     try {
         const { data, error } = await supabaseClient
@@ -3143,9 +3210,10 @@ async function fetchRemoteBolaoData() {
         }
 
         if (data && data.data) {
-            if (!data.data.auditLogs) data.data.auditLogs = [];
-            localStorage.setItem("nfl_bolao_2026_data_v2", JSON.stringify(data.data));
-            return data.data;
+            const merged = currentLocalData ? mergeBolaoData(currentLocalData, data.data) : data.data;
+            if (!merged.auditLogs) merged.auditLogs = [];
+            localStorage.setItem("nfl_bolao_2026_data_v2", JSON.stringify(merged));
+            return merged;
         }
     } catch (err) {
         console.error("Exceção ao buscar dados remotos:", err);
@@ -3163,11 +3231,11 @@ function setupRealtimeSubscription(onRemoteUpdateCallback) {
             { event: "*", schema: "public", table: "nfl_bolao_store", filter: "id=eq.main_data" },
             (payload) => {
                 if (payload.new && payload.new.data) {
-                    const newData = payload.new.data;
-                    if (!newData.auditLogs) newData.auditLogs = [];
-                    localStorage.setItem("nfl_bolao_2026_data_v2", JSON.stringify(newData));
+                    const localData = loadBolaoData();
+                    const mergedData = mergeBolaoData(localData, payload.new.data);
+                    localStorage.setItem("nfl_bolao_2026_data_v2", JSON.stringify(mergedData));
                     if (onRemoteUpdateCallback) {
-                        onRemoteUpdateCallback(newData);
+                        onRemoteUpdateCallback(mergedData);
                     }
                 }
             }
