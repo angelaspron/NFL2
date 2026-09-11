@@ -367,6 +367,38 @@ class BolaoApp {
     // CÁLCULO DE PONTUAÇÃO & REGRAS OFICIAIS DO BOLÃO
     // =========================================================================
     
+    getTeamRecord(teamAbbr) {
+        if (!teamAbbr || !this.data || !Array.isArray(this.data.matches)) {
+            return { wins: 0, ties: 0, losses: 0, recordStr: "0-0-0" };
+        }
+
+        const normTeam = this.normalizeTeamAbbr(teamAbbr);
+        let wins = 0;
+        let losses = 0;
+        let ties = 0;
+
+        this.data.matches.forEach(match => {
+            const official = this.getMatchOfficialResult(match);
+            if (!official.finished) return;
+
+            const m1 = this.normalizeTeamAbbr(match.team1);
+            const m2 = this.normalizeTeamAbbr(match.team2);
+
+            if (m1 === normTeam || m2 === normTeam) {
+                if (official.winner === "EMPATE") {
+                    ties++;
+                } else if (this.normalizeTeamAbbr(official.winner) === normTeam) {
+                    wins++;
+                } else {
+                    losses++;
+                }
+            }
+        });
+
+        const recordStr = `${wins}-${ties}-${losses}`;
+        return { wins, ties, losses, recordStr };
+    }
+
     getMatchOfficialResult(match) {
         if (match.status === "scheduled" || match.score1 === null || match.score2 === null || match.score1 === undefined || match.score2 === undefined || match.score1 === "" || match.score2 === "") {
             return {
@@ -715,6 +747,8 @@ class BolaoApp {
             currentMatches.forEach(match => {
                 const team1 = NFL_TEAMS[match.team1] || { shortName: match.team1, name: match.team1, logo: "" };
                 const team2 = NFL_TEAMS[match.team2] || { shortName: match.team2, name: match.team2, logo: "" };
+                const record1 = this.getTeamRecord(match.team1).recordStr;
+                const record2 = this.getTeamRecord(match.team2).recordStr;
                 const official = this.getMatchOfficialResult(match);
 
                 const officialWinnerTeam = official.winner ? (NFL_TEAMS[official.winner]?.shortName || official.winner) : "-";
@@ -730,7 +764,10 @@ class BolaoApp {
                         <!-- Time 1 -->
                         <td style="text-align: right;">
                             <div class="team-cell team-cell-left">
-                                <span>${team1.name}</span>
+                                <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                                    <span>${team1.name}</span>
+                                    <small class="team-record-badge" style="font-size: 0.7rem; color: var(--text-muted); font-weight: 500; line-height: 1;">(${record1})</small>
+                                </div>
                                 <img src="${team1.logo}" alt="${team1.shortName}" class="table-team-logo">
                             </div>
                         </td>
@@ -741,7 +778,10 @@ class BolaoApp {
                         <td style="text-align: left;">
                             <div class="team-cell team-cell-right">
                                 <img src="${team2.logo}" alt="${team2.shortName}" class="table-team-logo">
-                                <span>${team2.name}</span>
+                                <div style="display: flex; flex-direction: column; align-items: flex-start;">
+                                    <span>${team2.name}</span>
+                                    <small class="team-record-badge" style="font-size: 0.7rem; color: var(--text-muted); font-weight: 500; line-height: 1;">(${record2})</small>
+                                </div>
                             </div>
                         </td>
 
@@ -886,6 +926,8 @@ class BolaoApp {
         currentMatches.forEach(match => {
             const team1 = NFL_TEAMS[match.team1] || { name: match.team1, shortName: match.team1, logo: "" };
             const team2 = NFL_TEAMS[match.team2] || { name: match.team2, shortName: match.team2, logo: "" };
+            const record1 = this.getTeamRecord(match.team1).recordStr;
+            const record2 = this.getTeamRecord(match.team2).recordStr;
             const pred = this.data.predictions[match.id]?.[activeUser.id] || { winner: null, diff: 3 };
             const official = this.getMatchOfficialResult(match);
             const isLocked = isMatchLockedByTime(match) && !this.isAdmin;
@@ -915,7 +957,7 @@ class BolaoApp {
                         <div class="team-bet-select ${isTeam1Selected ? 'selected' : ''}" data-team="${match.team1}">
                             <img src="${team1.logo}" alt="${team1.name}" class="team-card-logo">
                             <span class="team-card-name">${team1.name}</span>
-                            <span class="team-card-record">${team1.shortName} (Visitante)</span>
+                            <span class="team-card-record">${team1.shortName} (${record1}) • Visitante</span>
                         </div>
 
                         <!-- VS / Placar -->
@@ -932,7 +974,7 @@ class BolaoApp {
                         <div class="team-bet-select ${isTeam2Selected ? 'selected' : ''}" data-team="${match.team2}">
                             <img src="${team2.logo}" alt="${team2.name}" class="team-card-logo">
                             <span class="team-card-name">${team2.name}</span>
-                            <span class="team-card-record">${team2.shortName} (Mandante)</span>
+                            <span class="team-card-record">${team2.shortName} (${record2}) • Mandante</span>
                         </div>
                     </div>
 
