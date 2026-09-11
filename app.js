@@ -536,7 +536,7 @@ class BolaoApp {
 
         const weekNavBar = document.getElementById("weekNavBarSection");
         if (weekNavBar) {
-            weekNavBar.style.display = (this.currentView === "settings") ? "none" : "flex";
+            weekNavBar.style.display = (this.currentView === "settings" || this.currentView === "stats") ? "none" : "flex";
         }
 
         if (this.currentView === "table") {
@@ -545,6 +545,8 @@ class BolaoApp {
             this.renderCardsView();
         } else if (this.currentView === "leaderboard") {
             this.renderLeaderboardView();
+        } else if (this.currentView === "stats") {
+            this.renderStatsView();
         } else if (this.currentView === "logs") {
             this.renderLogsView();
         } else if (this.currentView === "admin") {
@@ -2395,6 +2397,380 @@ class BolaoApp {
             this.currentWeek = week;
             this.renderAll();
         });
+    }
+
+    // =========================================================================
+    // ABA DE ESTATÍSTICAS (STATS - ESPN API)
+    // =========================================================================
+
+    async fetchEspnStandings() {
+        try {
+            const res = await fetch("https://site.api.espn.com/apis/v2/sports/football/nfl/standings");
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            return data;
+        } catch (err) {
+            console.error("Erro ao buscar Standings da ESPN:", err);
+            return null;
+        }
+    }
+
+    async fetchEspnLeaders() {
+        try {
+            const res = await fetch("https://site.api.espn.com/apis/site/v2/sports/football/nfl/leaderboards");
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            return data;
+        } catch (err) {
+            console.error("Erro ao buscar Líderes de Jogadores da ESPN:", err);
+            return null;
+        }
+    }
+
+    async renderStatsView() {
+        const container = document.getElementById("mainContentArea");
+        if (!container) return;
+
+        if (!this.statsSubTab) this.statsSubTab = "standings"; // 'standings' | 'leaders' | 'teams'
+
+        container.innerHTML = `
+            <section class="card-glass fade-in" style="padding: 1.5rem; margin-bottom: 2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 1rem;">
+                    <div>
+                        <h2 style="font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; color: #FFF; margin-bottom: 0.2rem; display: flex; align-items: center; gap: 0.6rem;">
+                            📊 Estatísticas da NFL <span style="font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.6rem; background: rgba(59,130,246,0.2); border: 1px solid #3B82F6; color: #93C5FD; border-radius: 20px;">ESPN LIVE</span>
+                        </h2>
+                        <p style="font-size: 0.85rem; color: var(--text-secondary);">
+                            Classificação atualizada, líderes da liga em pontos/jardas e desempenho das equipes.
+                        </p>
+                    </div>
+
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <button class="btn btn-secondary ${this.statsSubTab === 'standings' ? 'active-subtab' : ''}" id="btnSubTabStandings" style="padding: 0.45rem 0.9rem; font-size: 0.85rem; border-radius: 8px;">
+                            🏆 Classificação
+                        </button>
+                        <button class="btn btn-secondary ${this.statsSubTab === 'leaders' ? 'active-subtab' : ''}" id="btnSubTabLeaders" style="padding: 0.45rem 0.9rem; font-size: 0.85rem; border-radius: 8px;">
+                            ⭐ Líderes Individuais
+                        </button>
+                        <button class="btn btn-secondary ${this.statsSubTab === 'teams' ? 'active-subtab' : ''}" id="btnSubTabTeams" style="padding: 0.45rem 0.9rem; font-size: 0.85rem; border-radius: 8px;">
+                            🛡️ Ataque & Defesa
+                        </button>
+                    </div>
+                </div>
+
+                <div id="statsSubTabContent">
+                    <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                        <div class="spinner" style="margin: 0 auto 1rem auto;"></div>
+                        <p>Carregando dados estatísticos em tempo real da ESPN...</p>
+                    </div>
+                </div>
+            </section>
+        `;
+
+        // Binding das sub-abas
+        document.getElementById("btnSubTabStandings")?.addEventListener("click", () => {
+            this.statsSubTab = "standings";
+            this.renderStatsView();
+        });
+        document.getElementById("btnSubTabLeaders")?.addEventListener("click", () => {
+            this.statsSubTab = "leaders";
+            this.renderStatsView();
+        });
+        document.getElementById("btnSubTabTeams")?.addEventListener("click", () => {
+            this.statsSubTab = "teams";
+            this.renderStatsView();
+        });
+
+        // Carrega conteúdo específico da sub-aba
+        if (this.statsSubTab === "standings") {
+            await this.renderStatsStandings();
+        } else if (this.statsSubTab === "leaders") {
+            await this.renderStatsLeaders();
+        } else if (this.statsSubTab === "teams") {
+            await this.renderStatsTeamComparison();
+        }
+    }
+
+    async renderStatsStandings() {
+        const subContent = document.getElementById("statsSubTabContent");
+        if (!subContent) return;
+
+        const standingsData = await this.fetchEspnStandings();
+        if (!standingsData || !standingsData.children) {
+            subContent.innerHTML = `
+                <div style="text-align: center; padding: 2rem; color: #EF4444;">
+                    ⚠️ Não foi possível carregar a classificação da ESPN no momento. Tente novamente mais tarde.
+                </div>
+            `;
+            return;
+        }
+
+        let html = `<div style="display: flex; flex-direction: column; gap: 2rem;">`;
+
+        // Itera sobre as conferências (AFC e NFC)
+        standingsData.children.forEach(conf => {
+            const confName = conf.name || "Conferência";
+            const isAFC = confName.toUpperCase().includes("AMERICAN") || confName.toUpperCase().includes("AFC");
+            const badgeColor = isAFC ? "#D50A0A" : "#00338D";
+
+            html += `
+                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-glass); border-radius: 12px; padding: 1.2rem;">
+                    <h3 style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 800; color: #FFF; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="background: ${badgeColor}; padding: 0.25rem 0.6rem; border-radius: 6px; font-size: 0.8rem;">${isAFC ? 'AFC' : 'NFC'}</span>
+                        ${confName}
+                    </h3>
+            `;
+
+            // Divisões dentro da Conferência
+            if (conf.children) {
+                conf.children.forEach(div => {
+                    const divName = div.name || "Divisão";
+                    const entries = div.standings?.entries || [];
+
+                    html += `
+                        <div style="margin-bottom: 1.5rem;">
+                            <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                                📍 ${divName}
+                            </h4>
+                            <div class="table-responsive">
+                                <table class="table-bolao" style="font-size: 0.88rem;">
+                                    <thead>
+                                        <tr>
+                                            <th style="text-align: left; width: 220px;">Time</th>
+                                            <th>V</th>
+                                            <th>D</th>
+                                            <th>E</th>
+                                            <th>%</th>
+                                            <th>PF</th>
+                                            <th>PA</th>
+                                            <th>DIFF</th>
+                                            <th>CASA</th>
+                                            <th>FORA</th>
+                                            <th>DIV</th>
+                                            <th>CONF</th>
+                                            <th>STREAK</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                    `;
+
+                    entries.forEach(entry => {
+                        const team = entry.team || {};
+                        const stats = entry.stats || [];
+                        const getStat = (name) => {
+                            const s = stats.find(item => item.name === name || item.shortDisplayName === name || item.type === name);
+                            return s ? s.displayValue : "-";
+                        };
+
+                        const wins = getStat("wins");
+                        const losses = getStat("losses");
+                        const ties = getStat("ties");
+                        const winPercent = getStat("winPercent");
+                        const pointsFor = getStat("pointsFor");
+                        const pointsAgainst = getStat("pointsAgainst");
+                        const diff = getStat("pointDifferential");
+                        const homeRecord = getStat("Home") || getStat("home");
+                        const roadRecord = getStat("Road") || getStat("away");
+                        const divRecord = getStat("Division") || getStat("division");
+                        const confRecord = getStat("Conference") || getStat("conf");
+                        const streak = getStat("streak");
+
+                        const diffNum = parseInt(diff, 10);
+                        const diffClass = !isNaN(diffNum) ? (diffNum > 0 ? "color: #10B981; font-weight: 700;" : diffNum < 0 ? "color: #EF4444;" : "") : "";
+
+                        html += `
+                            <tr>
+                                <td style="text-align: left; display: flex; align-items: center; gap: 0.6rem; font-weight: 700;">
+                                    ${team.logos?.[0]?.href ? `<img src="${team.logos[0].href}" alt="${team.shortDisplayName}" style="width: 22px; height: 22px; object-fit: contain;">` : ""}
+                                    <span>${team.displayName || team.name}</span>
+                                </td>
+                                <td><strong style="color: #FFF;">${wins}</strong></td>
+                                <td>${losses}</td>
+                                <td>${ties}</td>
+                                <td>${winPercent}</td>
+                                <td>${pointsFor}</td>
+                                <td>${pointsAgainst}</td>
+                                <td style="${diffClass}">${diffNum > 0 ? '+' : ''}${diff}</td>
+                                <td>${homeRecord}</td>
+                                <td>${roadRecord}</td>
+                                <td>${divRecord}</td>
+                                <td>${confRecord}</td>
+                                <td><span class="badge" style="background: rgba(255,255,255,0.08); font-size: 0.75rem;">${streak}</span></td>
+                            </tr>
+                        `;
+                    });
+
+                    html += `
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            html += `</div>`;
+        });
+
+        html += `</div>`;
+        subContent.innerHTML = html;
+    }
+
+    async renderStatsLeaders() {
+        const subContent = document.getElementById("statsSubTabContent");
+        if (!subContent) return;
+
+        const leadersData = await this.fetchEspnLeaders();
+        if (!leadersData || !leadersData.leaderboards) {
+            subContent.innerHTML = `
+                <div style="text-align: center; padding: 2rem; color: #EF4444;">
+                    ⚠️ Não foi possível carregar os líderes da ESPN no momento.
+                </div>
+            `;
+            return;
+        }
+
+        let html = `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">`;
+
+        leadersData.leaderboards.forEach(cat => {
+            const catTitle = cat.displayName || cat.name || "Categoria";
+            const leaders = cat.leaders || [];
+
+            html += `
+                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-glass); border-radius: 12px; padding: 1.2rem;">
+                    <h3 style="font-family: var(--font-display); font-size: 1.1rem; font-weight: 800; color: #F59E0B; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
+                        <span>⭐ ${catTitle}</span>
+                    </h3>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            `;
+
+            leaders.slice(0, 5).forEach((leader, idx) => {
+                const athlete = leader.athlete || {};
+                const team = leader.team || {};
+                const value = leader.displayValue || leader.value || "-";
+
+                html += `
+                    <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(30, 41, 59, 0.5); padding: 0.6rem 0.8rem; border-radius: 8px; border-left: 3px solid ${idx === 0 ? '#F59E0B' : 'transparent'};">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <span style="font-family: var(--font-display); font-weight: 800; font-size: 0.9rem; color: ${idx === 0 ? '#F59E0B' : '#94A3B8'}; width: 18px;">
+                                #${idx + 1}
+                            </span>
+                            ${athlete.headshot?.href ? `<img src="${athlete.headshot.href}" alt="${athlete.displayName}" style="width: 38px; height: 38px; border-radius: 50%; object-fit: cover; background: rgba(255,255,255,0.1);">` : '<div style="width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;">🏈</div>'}
+                            <div>
+                                <div style="font-weight: 700; font-size: 0.88rem; color: #FFF;">${athlete.displayName || "Jogador"}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.3rem;">
+                                    ${team.logos?.[0]?.href ? `<img src="${team.logos[0].href}" style="width: 14px; height: 14px;">` : ""}
+                                    <span>${team.abbreviation || team.name || ""} • ${athlete.position?.abbreviation || ""}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="font-family: var(--font-display); font-weight: 800; font-size: 1.1rem; color: #38BDF8;">
+                            ${value}
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `
+                    </div>
+                </div>
+            `;
+        });
+
+        html += `</div>`;
+        subContent.innerHTML = html;
+    }
+
+    async renderStatsTeamComparison() {
+        const subContent = document.getElementById("statsSubTabContent");
+        if (!subContent) return;
+
+        const standingsData = await this.fetchEspnStandings();
+        if (!standingsData || !standingsData.children) {
+            subContent.innerHTML = `<div style="text-align: center; padding: 2rem; color: #EF4444;">⚠️ Não foi possível carregar o comparativo no momento.</div>`;
+            return;
+        }
+
+        // Extrai todos os times em uma lista plana
+        const allTeams = [];
+        standingsData.children.forEach(conf => {
+            if (conf.children) {
+                conf.children.forEach(div => {
+                    if (div.standings?.entries) {
+                        div.standings.entries.forEach(entry => {
+                            const team = entry.team || {};
+                            const stats = entry.stats || [];
+                            const getStatNum = (name) => {
+                                const s = stats.find(item => item.name === name || item.shortDisplayName === name || item.type === name);
+                                return s ? parseFloat(s.value || s.displayValue) : 0;
+                            };
+                            const getStatDisplay = (name) => {
+                                const s = stats.find(item => item.name === name || item.shortDisplayName === name || item.type === name);
+                                return s ? s.displayValue : "-";
+                            };
+
+                            allTeams.push({
+                                name: team.displayName || team.name,
+                                logo: team.logos?.[0]?.href || "",
+                                wins: getStatNum("wins"),
+                                losses: getStatNum("losses"),
+                                pointsFor: getStatNum("pointsFor"),
+                                pointsAgainst: getStatNum("pointsAgainst"),
+                                diff: getStatNum("pointDifferential"),
+                                diffDisplay: getStatDisplay("pointDifferential"),
+                                pfDisplay: getStatDisplay("pointsFor"),
+                                paDisplay: getStatDisplay("pointsAgainst")
+                            });
+                        });
+                    }
+                });
+            }
+        });
+
+        const topOffenses = [...allTeams].sort((a, b) => b.pointsFor - a.pointsFor).slice(0, 10);
+        const topDefenses = [...allTeams].sort((a, b) => a.pointsAgainst - b.pointsAgainst).slice(0, 10);
+
+        subContent.innerHTML = `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.5rem;">
+                <!-- Melhores Ataques -->
+                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-glass); border-radius: 12px; padding: 1.2rem;">
+                    <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 800; color: #10B981; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                        🔥 Melhores Ataques (Pontos Pró)
+                    </h3>
+                    <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+                        ${topOffenses.map((t, i) => `
+                            <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.8rem; background: rgba(30, 41, 59, 0.4); border-radius: 8px;">
+                                <div style="display: flex; align-items: center; gap: 0.6rem;">
+                                    <span style="font-family: var(--font-display); font-weight: 800; font-size: 0.85rem; color: #94A3B8; width: 20px;">#${i+1}</span>
+                                    ${t.logo ? `<img src="${t.logo}" style="width: 22px; height: 22px; object-fit: contain;">` : ''}
+                                    <span style="font-weight: 700; font-size: 0.88rem; color: #FFF;">${t.name}</span>
+                                </div>
+                                <span style="font-family: var(--font-display); font-weight: 800; color: #10B981;">${t.pfDisplay} pts</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <!-- Melhores Defesas -->
+                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-glass); border-radius: 12px; padding: 1.2rem;">
+                    <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 800; color: #38BDF8; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                        🛡️ Melhores Defesas (Menos Pontos Sofridos)
+                    </h3>
+                    <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+                        ${topDefenses.map((t, i) => `
+                            <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.8rem; background: rgba(30, 41, 59, 0.4); border-radius: 8px;">
+                                <div style="display: flex; align-items: center; gap: 0.6rem;">
+                                    <span style="font-family: var(--font-display); font-weight: 800; font-size: 0.85rem; color: #94A3B8; width: 20px;">#${i+1}</span>
+                                    ${t.logo ? `<img src="${t.logo}" style="width: 22px; height: 22px; object-fit: contain;">` : ''}
+                                    <span style="font-weight: 700; font-size: 0.88rem; color: #FFF;">${t.name}</span>
+                                </div>
+                                <span style="font-family: var(--font-display); font-weight: 800; color: #38BDF8;">${t.paDisplay} pts sofridos</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
     }
 
     updateNavTabs() {
