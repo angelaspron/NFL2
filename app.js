@@ -150,16 +150,24 @@ class BolaoApp {
     }
 
     async fetchEspnScores(week = 1, seasonType = 2) {
-        try {
-            const url = `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=${seasonType}&week=${week}`;
-            const res = await fetch(url);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            return data.events || [];
-        } catch (err) {
-            console.error(`Erro ao buscar dados da ESPN para Semana ${week}:`, err);
-            return null;
+        const urls = [
+            `https://site.web.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=${seasonType}&week=${week}`,
+            `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=${seasonType}&week=${week}`
+        ];
+        for (const url of urls) {
+            try {
+                const res = await fetch(url);
+                if (!res.ok) continue;
+                const data = await res.json();
+                if (data && Array.isArray(data.events)) {
+                    return data.events;
+                }
+            } catch (err) {
+                console.warn(`Erro ao buscar dados da ESPN em (${url}):`, err);
+            }
         }
+        console.error(`Falha ao buscar dados da ESPN para Semana ${week}`);
+        return null;
     }
 
     async syncWeekFromEspn(week = this.currentWeek, showToastNotification = true) {
@@ -186,8 +194,9 @@ class BolaoApp {
             const scoreA = comp1.score !== undefined && comp1.score !== "" ? parseInt(comp1.score, 10) : null;
             const scoreB = comp2.score !== undefined && comp2.score !== "" ? parseInt(comp2.score, 10) : null;
 
-            const isCompleted = comp.status?.type?.completed === true || comp.status?.type?.state === "post";
-            const isInProgress = comp.status?.type?.state === "in";
+            const statusName = comp.status?.type?.name || "";
+            const isCompleted = comp.status?.type?.completed === true || comp.status?.type?.state === "post" || statusName.includes("FINAL");
+            const isInProgress = comp.status?.type?.state === "in" || statusName.includes("IN_PROGRESS") || statusName.includes("HALFTIME");
 
             const match = this.data.matches.find(m => {
                 if (m.week !== week) return false;
@@ -613,6 +622,7 @@ class BolaoApp {
             btn.addEventListener("click", (e) => {
                 this.currentWeek = parseInt(e.currentTarget.dataset.week, 10);
                 this.renderAll();
+                this.syncWeekFromEspn(this.currentWeek, false);
             });
         });
 
@@ -2404,37 +2414,40 @@ class BolaoApp {
     // =========================================================================
 
     async fetchEspnStandings() {
-        try {
-            const res = await fetch("https://site.api.espn.com/apis/v2/sports/football/nfl/standings");
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            return data;
-        } catch (err) {
-            console.error("Erro ao buscar Standings da ESPN:", err);
-            return null;
+        const urls = [
+            "https://site.web.api.espn.com/apis/v2/sports/football/nfl/standings",
+            "https://site.api.espn.com/apis/v2/sports/football/nfl/standings"
+        ];
+        for (const url of urls) {
+            try {
+                const res = await fetch(url);
+                if (!res.ok) continue;
+                const data = await res.json();
+                if (data) return data;
+            } catch (err) {
+                console.warn(`Erro Standings (${url}):`, err);
+            }
         }
+        return null;
     }
 
     async fetchEspnLeaders() {
-        try {
-            // Tenta o endpoint principal de leaderboards da ESPN e fallback para estatísticas da temporada
-            const res = await fetch("https://site.api.espn.com/apis/site/v2/sports/football/nfl/leaderboards");
-            if (res.ok) {
+        const urls = [
+            "https://site.web.api.espn.com/apis/site/v2/sports/football/nfl/leaderboards",
+            "https://site.api.espn.com/apis/site/v2/sports/football/nfl/leaderboards",
+            "https://site.web.api.espn.com/apis/site/v2/sports/football/nfl/summary?event=401547379"
+        ];
+        for (const url of urls) {
+            try {
+                const res = await fetch(url);
+                if (!res.ok) continue;
                 const data = await res.json();
                 if (data && (data.leaderboards || data.leaders)) return data;
+            } catch (err) {
+                console.warn(`Erro Leaders (${url}):`, err);
             }
-            
-            // Endpoint alternativo oficial de leaders
-            const resAlt = await fetch("https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event=401547379");
-            if (resAlt.ok) {
-                const dataAlt = await resAlt.json();
-                if (dataAlt.leaders) return { leaderboards: dataAlt.leaders };
-            }
-            return null;
-        } catch (err) {
-            console.error("Erro ao buscar Líderes de Jogadores da ESPN:", err);
-            return null;
         }
+        return null;
     }
 
     async renderStatsView() {

@@ -2988,7 +2988,7 @@ const BrasiliaInternetClock = {
             try {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 5000);
-                const res = await fetch("https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&week=1", {
+                const res = await fetch("https://site.web.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&week=1", {
                     signal: controller.signal
                 });
                 clearTimeout(timeoutId);
