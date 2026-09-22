@@ -1,4 +1,4 @@
-// =============================================================================
+﻿// =============================================================================
 // BOLÃƒO NFL 2026-2027 - BANCO DE DADOS OFICIAL DA TEMPORADA 2026-2027
 // CalendÃ¡rio Oficial DAZN / NFL
 // =============================================================================
@@ -2315,7 +2315,7 @@ const INITIAL_BOLAO_DATA = {
         "team2":  "ATL",
         "score2":  null,
         "team1":  "TB",
-        "time":  "TBD",
+        "time":  "21:35",
         "date":  "Dom, 27/12",
         "status":  "scheduled",
         "week":  16
@@ -2326,7 +2326,7 @@ const INITIAL_BOLAO_DATA = {
         "team2":  "MIN",
         "score2":  null,
         "team1":  "WSH",
-        "time":  "TBD",
+        "time":  "21:35",
         "date":  "Dom, 27/12",
         "status":  "scheduled",
         "week":  16
@@ -2337,7 +2337,7 @@ const INITIAL_BOLAO_DATA = {
         "team2":  "PIT",
         "score2":  null,
         "team1":  "CAR",
-        "time":  "TBD",
+        "time":  "21:35",
         "date":  "Dom, 27/12",
         "status":  "scheduled",
         "week":  16
@@ -2348,7 +2348,7 @@ const INITIAL_BOLAO_DATA = {
         "team2":  "IND",
         "score2":  null,
         "team1":  "CIN",
-        "time":  "TBD",
+        "time":  "21:35",
         "date":  "Dom, 27/12",
         "status":  "scheduled",
         "week":  16
@@ -2458,7 +2458,7 @@ const INITIAL_BOLAO_DATA = {
         "team2":  "TB",
         "score2":  null,
         "team1":  "LAR",
-        "time":  "TBD",
+        "time":  "21:35",
         "date":  "Dom, 3/01",
         "status":  "scheduled",
         "week":  17
@@ -2469,7 +2469,7 @@ const INITIAL_BOLAO_DATA = {
         "team2":  "NE",
         "score2":  null,
         "team1":  "DEN",
-        "time":  "TBD",
+        "time":  "21:35",
         "date":  "Dom, 3/01",
         "status":  "scheduled",
         "week":  17
@@ -2480,7 +2480,7 @@ const INITIAL_BOLAO_DATA = {
         "team2":  "LAC",
         "score2":  null,
         "team1":  "KC",
-        "time":  "TBD",
+        "time":  "21:35",
         "date":  "Dom, 3/01",
         "status":  "scheduled",
         "week":  17
@@ -2491,7 +2491,7 @@ const INITIAL_BOLAO_DATA = {
         "team2":  "JAX",
         "score2":  null,
         "team1":  "WSH",
-        "time":  "TBD",
+        "time":  "21:35",
         "date":  "Dom, 3/01",
         "status":  "scheduled",
         "week":  17
@@ -2612,7 +2612,7 @@ const INITIAL_BOLAO_DATA = {
         "team2":  "BUF",
         "score2":  null,
         "team1":  "NYJ",
-        "time":  "TBD",
+        "time":  "21:35",
         "date":  "Dom, 10/01",
         "status":  "scheduled",
         "week":  18
@@ -2623,7 +2623,7 @@ const INITIAL_BOLAO_DATA = {
         "team2":  "IND",
         "score2":  null,
         "team1":  "JAX",
-        "time":  "TBD",
+        "time":  "21:35",
         "date":  "Dom, 10/01",
         "status":  "scheduled",
         "week":  18
@@ -2634,7 +2634,7 @@ const INITIAL_BOLAO_DATA = {
         "team2":  "KC",
         "score2":  null,
         "team1":  "LV",
-        "time":  "TBD",
+        "time":  "21:35",
         "date":  "Dom, 10/01",
         "status":  "scheduled",
         "week":  18
@@ -2645,7 +2645,7 @@ const INITIAL_BOLAO_DATA = {
         "team2":  "HOU",
         "score2":  null,
         "team1":  "TEN",
-        "time":  "TBD",
+        "time":  "21:35",
         "date":  "Dom, 10/01",
         "status":  "scheduled",
         "week":  18
@@ -2656,7 +2656,7 @@ const INITIAL_BOLAO_DATA = {
         "team2":  "DEN",
         "score2":  null,
         "team1":  "LAC",
-        "time":  "TBD",
+        "time":  "21:35",
         "date":  "Dom, 10/01",
         "status":  "scheduled",
         "week":  18
@@ -2667,7 +2667,7 @@ const INITIAL_BOLAO_DATA = {
         "team2":  "NE",
         "score2":  null,
         "team1":  "MIA",
-        "time":  "TBD",
+        "time":  "21:35",
         "date":  "Dom, 10/01",
         "status":  "scheduled",
         "week":  18
@@ -2678,7 +2678,7 @@ const INITIAL_BOLAO_DATA = {
         "team2":  "CIN",
         "score2":  null,
         "team1":  "CLE",
-        "time":  "TBD",
+        "time":  "21:35",
         "date":  "Dom, 10/01",
         "status":  "scheduled",
         "week":  18
@@ -2689,7 +2689,7 @@ const INITIAL_BOLAO_DATA = {
         "team2":  "BAL",
         "score2":  null,
         "team1":  "PIT",
-        "time":  "TBD",
+        "time":  "21:35",
         "date":  "Dom, 10/01",
         "status":  "scheduled",
         "week":  18
@@ -2700,7 +2700,7 @@ const INITIAL_BOLAO_DATA = {
         "team2":  "MIN",
         "score2":  null,
         "team1":  "CHI",
-        "time":  "TBD",
+        "time":  "14:",
         "date":  "Dom, 10/01",
         "status":  "scheduled",
         "week":  18
@@ -2711,7 +2711,7 @@ const INITIAL_BOLAO_DATA = {
         "team2":  "GB",
         "score2":  null,
         "team1":  "DET",
-        "time":  "TBD",
+        "time":  "21:35",
         "date":  "Dom, 10/01",
         "status":  "scheduled",
         "week":  18
@@ -2722,7 +2722,7 @@ const INITIAL_BOLAO_DATA = {
         "team2":  "WSH",
         "score2":  null,
         "team1":  "DAL",
-        "time":  "TBD",
+        "time":  "21:35",
         "date":  "Dom, 10/01",
         "status":  "scheduled",
         "week":  18
@@ -2733,7 +2733,7 @@ const INITIAL_BOLAO_DATA = {
         "team2":  "NO",
         "score2":  null,
         "team1":  "TB",
-        "time":  "TBD",
+        "time":  "21:35",
         "date":  "Dom, 10/01",
         "status":  "scheduled",
         "week":  18
@@ -2744,7 +2744,7 @@ const INITIAL_BOLAO_DATA = {
         "team2":  "NYG",
         "score2":  null,
         "team1":  "PHI",
-        "time":  "TBD",
+        "time":  "21:35",
         "date":  "Dom, 10/01",
         "status":  "scheduled",
         "week":  18
@@ -2755,7 +2755,7 @@ const INITIAL_BOLAO_DATA = {
         "team2":  "LAR",
         "score2":  null,
         "team1":  "SEA",
-        "time":  "TBD",
+        "time":  "21:35",
         "date":  "Dom, 10/01",
         "status":  "scheduled",
         "week":  18
@@ -2766,7 +2766,7 @@ const INITIAL_BOLAO_DATA = {
         "team2":  "CAR",
         "score2":  null,
         "team1":  "ATL",
-        "time":  "TBD",
+        "time":  "14:",
         "date":  "Dom, 10/01",
         "status":  "scheduled",
         "week":  18
@@ -2779,6 +2779,30 @@ const INITIAL_BOLAO_DATA = {
         "status":  "scheduled",
         "week":  18
     }
+    ,{ "id": "s02_g16", "score1": null, "team2": "SF", "score2": null, "team1": "MIA", "time": "17:25", "date": "Dom, 20/09", "status": "scheduled", "week": 2 }
+    ,{ "id": "s03_g16", "score1": null, "team2": "SF", "score2": null, "team1": "ARI", "time": "17:05", "date": "Dom, 27/09", "status": "scheduled", "week": 3 }
+    ,{ "id": "s04_g15", "score1": null, "team2": "SF", "score2": null, "team1": "DEN", "time": "17:25", "date": "Dom, 04/10", "status": "scheduled", "week": 4 }
+    ,{ "id": "s04_g16", "score1": null, "team2": "CLE", "score2": null, "team1": "PIT", "time": "21:15", "date": "Qui, 01/10", "status": "scheduled", "week": 4 }
+    ,{ "id": "s06_g15", "score1": null, "team2": "SF", "score2": null, "team1": "WSH", "time": "21:15", "date": "Seg, 12/10", "status": "scheduled", "week": 6 }
+    ,{ "id": "s08_g03", "score1": null, "team2": "MIN", "score2": null, "team1": "DET", "time": "14:00", "date": "Dom, 01/11", "status": "scheduled", "week": 8 }
+    ,{ "id": "s08_g04", "score1": null, "team2": "LAR", "score2": null, "team1": "DAL", "time": "14:00", "date": "Dom, 01/11", "status": "scheduled", "week": 8 }
+    ,{ "id": "s08_g05", "score1": null, "team2": "LV", "score2": null, "team1": "DEN", "time": "14:00", "date": "Dom, 01/11", "status": "scheduled", "week": 8 }
+    ,{ "id": "s08_g06", "score1": null, "team2": "ARI", "score2": null, "team1": "NYJ", "time": "14:00", "date": "Dom, 01/11", "status": "scheduled", "week": 8 }
+    ,{ "id": "s08_g07", "score1": null, "team2": "NYG", "score2": null, "team1": "CLE", "time": "14:00", "date": "Dom, 01/11", "status": "scheduled", "week": 8 }
+    ,{ "id": "s08_g08", "score1": null, "team2": "PIT", "score2": null, "team1": "BAL", "time": "14:00", "date": "Dom, 01/11", "status": "scheduled", "week": 8 }
+    ,{ "id": "s08_g09", "score1": null, "team2": "HOU", "score2": null, "team1": "JAX", "time": "14:00", "date": "Dom, 01/11", "status": "scheduled", "week": 8 }
+    ,{ "id": "s08_g10", "score1": null, "team2": "TEN", "score2": null, "team1": "IND", "time": "14:00", "date": "Dom, 01/11", "status": "scheduled", "week": 8 }
+    ,{ "id": "s08_g11", "score1": null, "team2": "GB", "score2": null, "team1": "MIA", "time": "14:00", "date": "Dom, 01/11", "status": "scheduled", "week": 8 }
+    ,{ "id": "s08_g12", "score1": null, "team2": "CAR", "score2": null, "team1": "CIN", "time": "14:00", "date": "Dom, 01/11", "status": "scheduled", "week": 8 }
+    ,{ "id": "s08_g13", "score1": null, "team2": "WSH", "score2": null, "team1": "ATL", "time": "14:00", "date": "Dom, 01/11", "status": "scheduled", "week": 8 }
+    ,{ "id": "s08_g14", "score1": null, "team2": "TB", "score2": null, "team1": "NO", "time": "14:00", "date": "Dom, 01/11", "status": "scheduled", "week": 8 }
+    ,{ "id": "s09_g15", "score1": null, "team2": "SF", "score2": null, "team1": "LV", "time": "18:05", "date": "Dom, 08/11", "status": "scheduled", "week": 9 }
+    ,{ "id": "s11_g15", "score1": null, "team2": "SF", "score2": null, "team1": "MIN", "time": "22:20", "date": "Dom, 22/11", "status": "scheduled", "week": 11 }
+    ,{ "id": "s12_g16", "score1": null, "team2": "SF", "score2": null, "team1": "SEA", "time": "18:25", "date": "Dom, 29/11", "status": "scheduled", "week": 12 }
+    ,{ "id": "s14_g15", "score1": null, "team2": "SF", "score2": null, "team1": "LAR", "time": "18:25", "date": "Dom, 13/12", "status": "scheduled", "week": 14 }
+    ,{ "id": "s15_g15", "score1": null, "team2": "PHI", "score2": null, "team1": "SEA", "time": "19:00", "date": "Sab, 19/12", "status": "scheduled", "week": 15 }
+    ,{ "id": "s15_g16", "score1": null, "team2": "BUF", "score2": null, "team1": "CHI", "time": "22:20", "date": "Sab, 19/12", "status": "scheduled", "week": 15 }
+    ,{ "id": "s17_g16", "score1": null, "team2": "SF", "score2": null, "team1": "PHI", "time": "22:20", "date": "Dom, 03/01", "status": "scheduled", "week": 17 }
 ]
 ,
     predictions: {}
