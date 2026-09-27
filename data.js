@@ -2837,6 +2837,38 @@ function loadBolaoData() {
                 if (!parsed.auditLogs) parsed.auditLogs = [];
                 if (!parsed.predictions) parsed.predictions = {};
                 
+                // AUTO RECOVERY: Recupera apostas perdidas a partir do log (mais novo para mais velho)
+                if (parsed.auditLogs.length > 0) {
+                    parsed.auditLogs.forEach(log => {
+                        if (!log.matchId || !log.userId || !log.newBet) return;
+                        if (!parsed.predictions[log.matchId]) parsed.predictions[log.matchId] = {};
+                        
+                        // Se já recuperamos ou existe aposta para este usuário, pula
+                        if (parsed.predictions[log.matchId][log.userId] && parsed.predictions[log.matchId][log.userId].winner) return;
+                        
+                        if (log.newBet !== "Nenhum palpite") {
+                            const match = log.newBet.match(/^(.*?) por (\d+) pts$/);
+                            if (match) {
+                                const teamStr = match[1].trim();
+                                const diff = parseInt(match[2], 10);
+                                let winnerId = teamStr;
+                                for (const [id, team] of Object.entries(NFL_TEAMS)) {
+                                    if (team.shortName === teamStr || team.name === teamStr || team.id === teamStr) {
+                                        winnerId = team.id;
+                                        break;
+                                    }
+                                }
+                                parsed.predictions[log.matchId][log.userId] = { winner: winnerId, diff: diff };
+                            }
+                        } else {
+                            // Marca como nulo para que logs mais antigos não sobrescrevam
+                            if (!parsed.predictions[log.matchId][log.userId]) {
+                                parsed.predictions[log.matchId][log.userId] = { winner: null, diff: 1 };
+                            }
+                        }
+                    });
+                }
+
                 // Atualiza o storage apenas localmente (evita sobrescrever dados na nuvem com dados antigos)
                 try {
                     localStorage.setItem("nfl_bolao_2026_data_v2", JSON.stringify(parsed));
