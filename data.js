@@ -1,4 +1,4 @@
-﻿// =============================================================================
+// =============================================================================
 // BOLÃƒO NFL 2026-2027 - BANCO DE DADOS OFICIAL DA TEMPORADA 2026-2027
 // CalendÃ¡rio Oficial DAZN / NFL
 // =============================================================================
@@ -2837,8 +2837,10 @@ function loadBolaoData() {
                 if (!parsed.auditLogs) parsed.auditLogs = [];
                 if (!parsed.predictions) parsed.predictions = {};
                 
-                // Atualiza o storage com os dados corrigidos
-                saveBolaoData(parsed);
+                // Atualiza o storage apenas localmente (evita sobrescrever dados na nuvem com dados antigos)
+                try {
+                    localStorage.setItem("nfl_bolao_2026_data_v2", JSON.stringify(parsed));
+                } catch(e) {}
                 return parsed;
             }
         }
