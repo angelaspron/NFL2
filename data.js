@@ -3230,6 +3230,37 @@ function mergeBolaoData(localData, remoteData) {
         merged.auditLogs = merged.auditLogs.slice(0, 500);
     }
 
+    // 5. AUTO RECOVERY PÓS-MERGE: Se o log está na nuvem mas a aposta sumiu, nós a recuperamos agora
+    if (merged.auditLogs.length > 0) {
+        merged.auditLogs.forEach(log => {
+            if (!log.matchId || !log.userId || !log.newBet) return;
+            if (!merged.predictions[log.matchId]) merged.predictions[log.matchId] = {};
+            
+            // Se já recuperamos ou existe aposta para este usuário, pula
+            if (merged.predictions[log.matchId][log.userId] && merged.predictions[log.matchId][log.userId].winner) return;
+            
+            if (log.newBet !== "Nenhum palpite") {
+                const matchRegex = log.newBet.match(/^(.*?) por (\d+) pts$/);
+                if (matchRegex) {
+                    const teamStr = matchRegex[1].trim();
+                    const diff = parseInt(matchRegex[2], 10);
+                    let winnerId = teamStr;
+                    for (const [id, team] of Object.entries(NFL_TEAMS)) {
+                        if (team.shortName === teamStr || team.name === teamStr || team.id === teamStr) {
+                            winnerId = team.id;
+                            break;
+                        }
+                    }
+                    merged.predictions[log.matchId][log.userId] = { winner: winnerId, diff: diff };
+                }
+            } else {
+                if (!merged.predictions[log.matchId][log.userId]) {
+                    merged.predictions[log.matchId][log.userId] = { winner: null, diff: 1 };
+                }
+            }
+        });
+    }
+
     if (!merged.settings) merged.settings = {};
     if (!merged.settings.adminPassword) merged.settings.adminPassword = "Pats87";
 
