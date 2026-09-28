@@ -64,6 +64,10 @@ class BolaoApp {
         if (this.data.settings.autoSyncEspn !== false) {
             this.startAutoSyncEspn();
         }
+        
+        // Sincroniza todas as semanas em background para que a soma dos pontos 
+        // de todas as semanas passadas aconteça automaticamente sem clique
+        this.syncAllWeeksBackground();
     }
 
     updateBrasiliaClockDisplay() {
@@ -275,6 +279,25 @@ class BolaoApp {
             this.showToast(`✅ ESPN Sync Concluído! ${totalUpdated} placares atualizados na temporada.`, "success");
         } else {
             this.showToast("ℹ️ ESPN Sync Concluído: Todos os placares já estão sincronizados.", "info");
+        }
+    }
+
+    async syncAllWeeksBackground() {
+        if (this.isSyncingEspnBackground || this.isSyncingEspn) return;
+        this.isSyncingEspnBackground = true;
+        try {
+            let totalUpdated = 0;
+            for (let w = 1; w <= 18; w++) {
+                const count = await this.syncWeekFromEspn(w, false);
+                totalUpdated += count;
+            }
+            if (totalUpdated > 0) {
+                this.data.lastEspnSync = new Date().toISOString();
+                saveBolaoData(this.data);
+                this.renderAll();
+            }
+        } finally {
+            this.isSyncingEspnBackground = false;
         }
     }
 
