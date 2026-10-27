@@ -3279,7 +3279,7 @@ function isMatchLockedByTime(match) {
     }
 
     // Consulta a data e hora de Brasília obtidas na Internet (nunca o relógio do computador)
-    const currentBrasiliaTime = BrasiliaInternetClock.getNowTimestamp();
+    const currentBrasiliaTime = getCurrentBrasiliaTimestamp();
     if (currentBrasiliaTime !== null && currentBrasiliaTime >= kickoffTimestamp) {
         // Horário atual de Brasília já alcançou ou passou do horário do jogo -> BLOQUEADO!
         return true;
@@ -3287,6 +3287,108 @@ function isMatchLockedByTime(match) {
 
     // Caso contrário, jogo futuro -> ABERTO para apostas!
     return false;
+}
+
+// Obtém o timestamp atual de Brasília (prioriza o relógio oficial da internet e possui fallback para fuso America/Sao_Paulo)
+function getCurrentBrasiliaTimestamp() {
+    if (typeof BrasiliaInternetClock !== "undefined" && typeof BrasiliaInternetClock.getNowTimestamp === "function") {
+        const ts = BrasiliaInternetClock.getNowTimestamp();
+        if (ts !== null && !isNaN(ts)) return ts;
+    }
+    const now = new Date();
+    try {
+        const formatter = new Intl.DateTimeFormat("en-US", {
+            timeZone: "America/Sao_Paulo",
+            year: "numeric", month: "numeric", day: "numeric",
+            hour: "numeric", minute: "numeric", second: "numeric",
+            hour12: false
+        });
+        const parts = formatter.formatToParts(now);
+        const map = {};
+        parts.forEach(p => map[p.type] = p.value);
+        return Date.UTC(
+            parseInt(map.year, 10),
+            parseInt(map.month, 10) - 1,
+            parseInt(map.day, 10),
+            parseInt(map.hour, 10) % 24,
+            parseInt(map.minute, 10),
+            parseInt(map.second, 10)
+        );
+    } catch (e) {
+        return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), (now.getUTCHours() - 3 + 24) % 24, now.getUTCMinutes(), now.getUTCSeconds());
+    }
+}
+
+// Verifica se uma semana específica da NFL já teve todos os seus jogos concluídos
+function isWeekConcluded(weekNumber, matches, nowTs) {
+    if (!matches || !Array.isArray(matches)) return false;
+    const weekMatches = matches.filter(m => parseInt(m.week, 10) === weekNumber);
+    if (!weekMatches || weekMatches.length === 0) return false;
+
+    // 1. Se todos os jogos da semana já tiverem status "finished" ou "post", a semana terminou
+    const allFinished = weekMatches.every(m => m.status === "finished" || m.status === "post");
+    if (allFinished) return true;
+
+    // 2. Extrai horários de início (kickoff) dos jogos da rodada
+    const validKickoffs = weekMatches
+        .map(m => getMatchKickoffTimestamp(m))
+        .filter(ts => ts !== null && !isNaN(ts));
+
+    // Se nenhum jogo tem data/hora cadastrada, é semana futura
+    if (validKickoffs.length === 0) return false;
+
+    // Considera a duração padrão de uma partida NFL (3h30min)
+    const GAME_ESTIMATED_DURATION_MS = 3.5 * 60 * 60 * 1000;
+
+    // Todos os jogos da rodada precisam ter sido concluídos (status finished, placar ou horário transcorrido)
+    const allMatchesOver = weekMatches.every(m => {
+        if (m.status === "finished" || m.status === "post") return true;
+        if (m.status !== "scheduled" &&
+            m.score1 !== null && m.score1 !== undefined && m.score1 !== "" &&
+            m.score2 !== null && m.score2 !== undefined && m.score2 !== "") {
+            return true;
+        }
+        const kickoff = getMatchKickoffTimestamp(m);
+        if (kickoff !== null) {
+            return nowTs >= kickoff + GAME_ESTIMATED_DURATION_MS;
+        }
+        return false;
+    });
+
+    return allMatchesOver;
+}
+
+// Determina dinamicamente a semana corrente da NFL usando a data e relógio oficial de Brasília
+function determineCurrentWeek(matches, customNowTs = null) {
+    if (!matches || !Array.isArray(matches) || matches.length === 0) {
+        return 1;
+    }
+
+    const nowTs = (customNowTs !== null && customNowTs !== undefined)
+        ? customNowTs
+        : getCurrentBrasiliaTimestamp();
+
+    const weekNumbers = [...new Set(matches.map(m => parseInt(m.week, 10)))]
+        .filter(w => !isNaN(w) && w > 0)
+        .sort((a, b) => a - b);
+
+    if (weekNumbers.length === 0) return 1;
+
+    // Retorna a primeira semana cujos jogos ainda não foram todos concluídos
+    for (const week of weekNumbers) {
+        if (!isWeekConcluded(week, matches, nowTs)) {
+            return week;
+        }
+    }
+
+    // Se todas as semanas do calendário já terminaram (ex: pós-Super Bowl), fica na última semana
+    return weekNumbers[weekNumbers.length - 1];
+}
+
+if (typeof window !== "undefined") {
+    window.getCurrentBrasiliaTimestamp = getCurrentBrasiliaTimestamp;
+    window.isWeekConcluded = isWeekConcluded;
+    window.determineCurrentWeek = determineCurrentWeek;
 }
 
 function mergeBolaoData(localData, remoteData) {

@@ -5,7 +5,11 @@
 class BolaoApp {
     constructor() {
         this.data = loadBolaoData();
-        this.currentWeek = 1;
+        this.userManuallySelectedWeek = false;
+        // Abre na semana corrente usando o relógio e data de Brasília
+        this.currentWeek = (typeof determineCurrentWeek === "function")
+            ? determineCurrentWeek(this.data.matches)
+            : 1;
         this.currentView = "table"; // 'table' | 'cards' | 'leaderboard' | 'admin' | 'settings'
         this.activeUserId = this.data.participants[0]?.id || "user_angel";
         this.isAdmin = false;
@@ -35,6 +39,10 @@ class BolaoApp {
             this.startBrasiliaClockLiveUpdate();
             await BrasiliaInternetClock.sync();
             this.updateBrasiliaClockDisplay();
+            // Recalcula com a precisão oficial da internet se o usuário ainda não escolheu outra semana
+            if (!this.userManuallySelectedWeek && typeof determineCurrentWeek === "function") {
+                this.currentWeek = determineCurrentWeek(this.data.matches);
+            }
         }
 
         this.renderAll();
@@ -44,6 +52,9 @@ class BolaoApp {
         if (remoteData) {
             this.data = remoteData;
             this.sanitizeDataMatches();
+            if (!this.userManuallySelectedWeek && typeof determineCurrentWeek === "function") {
+                this.currentWeek = determineCurrentWeek(this.data.matches);
+            }
             this.renderAll();
         } else {
             // Se for o primeiro acesso e a nuvem ainda estiver vazia, salva a base atual na nuvem
@@ -643,11 +654,20 @@ class BolaoApp {
 
         container.querySelectorAll(".week-btn[data-week]").forEach(btn => {
             btn.addEventListener("click", (e) => {
+                this.userManuallySelectedWeek = true;
                 this.currentWeek = parseInt(e.currentTarget.dataset.week, 10);
                 this.renderAll();
                 this.syncWeekFromEspn(this.currentWeek, false);
             });
         });
+
+        // Garante que o botão da semana atual fique visível no scroll horizontal
+        const activeBtn = container.querySelector(`.week-btn[data-week="${this.currentWeek}"]`);
+        if (activeBtn) {
+            try {
+                activeBtn.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+            } catch(e) {}
+        }
 
         document.getElementById("btnSyncEspnHeader")?.addEventListener("click", () => {
             this.syncWeekFromEspn(this.currentWeek);
